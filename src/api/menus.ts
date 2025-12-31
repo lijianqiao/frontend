@@ -1,0 +1,67 @@
+import { request } from '@/utils/request'
+import type { ResponseBase, PaginatedResponse } from '@/types/api'
+
+export interface Menu {
+  id: string
+  parent_id: string | null
+  title: string
+  name: string // route name
+  path: string // route path
+  component: string | null // component path
+  icon: string | null
+  sort: number
+  type: 'catalog' | 'menu' | 'button'
+  permission: string | null
+  hidden: boolean
+  is_active: boolean
+  created_at: string
+  children?: Menu[]
+}
+
+export interface MenuCreate {
+  parent_id?: string | null
+  title: string
+  name: string
+  path: string
+  component?: string | null
+  icon?: string | null
+  sort?: number
+  type: 'catalog' | 'menu' | 'button'
+  permission?: string | null
+  hidden?: boolean
+  is_active?: boolean
+}
+
+export type MenuUpdate = Partial<MenuCreate>
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getMenus(params?: any) {
+  return request<ResponseBase<PaginatedResponse<Menu>>>({
+    url: '/menus/',
+    method: 'get',
+    params,
+  })
+}
+
+export function createMenu(data: MenuCreate) {
+  return request<ResponseBase<Menu>>({
+    url: '/menus/',
+    method: 'post',
+    data,
+  })
+}
+
+export function updateMenu(id: string, data: MenuUpdate) {
+  return request<ResponseBase<Menu>>({
+    url: `/menus/${id}`,
+    method: 'put',
+    data,
+  })
+}
+
+export function deleteMenu(id: string) {
+  return request<ResponseBase<unknown>>({
+    url: `/menus/${id}`,
+    method: 'delete',
+  })
+}
