@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useMessage } from 'naive-ui'
+import { useMessage, NIcon } from 'naive-ui'
+import { PersonOutline, LockClosedOutline } from '@vicons/ionicons5'
 import { login } from '@/api/auth'
 import { useUserStore } from '@/stores/user'
 
@@ -64,20 +65,17 @@ const handleLogin = async (e: Event) => {
 
 <template>
   <div class="login-container">
-    <div class="login-bg-shape shape-1"></div>
-    <div class="login-bg-shape shape-2"></div>
-
-    <div class="login-card glass-effect">
+    <div class="login-box">
       <div class="header">
-        <div class="logo-text">Admin RBAC</div>
-        <p class="subtitle">让管理更简单 高效 安全</p>
+        <h2 class="title">Admin RBAC</h2>
+        <p class="subtitle">欢迎回来，请登录您的账户</p>
       </div>
 
       <n-form ref="formRef" :model="model" :rules="rules" size="large" :show-label="false">
         <n-form-item path="username">
           <n-input v-model:value="model.username" placeholder="用户名" @keydown.enter.prevent>
             <template #prefix>
-              <span class="icon">👤</span>
+              <n-icon size="18" color="#808695"><PersonOutline /></n-icon>
             </template>
           </n-input>
         </n-form-item>
@@ -90,7 +88,7 @@ const handleLogin = async (e: Event) => {
             @keydown.enter.prevent
           >
             <template #prefix>
-              <span class="icon">🔒</span>
+              <n-icon size="18" color="#808695"><LockClosedOutline /></n-icon>
             </template>
           </n-input>
         </n-form-item>
@@ -102,137 +100,59 @@ const handleLogin = async (e: Event) => {
           @click="handleLogin"
           class="login-btn"
         >
-          立即登录
+          登录
         </n-button>
       </n-form>
-
-      <div class="footer">
-        <span>忘记密码?</span>
-      </div>
     </div>
+    <div class="footer-copyright">&copy; 2025 Admin RBAC. All Rights Reserved.</div>
   </div>
 </template>
 
 <style scoped>
 .login-container {
-  position: relative;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   height: 100vh;
   width: 100vw;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  overflow: hidden;
+  background-color: #f0f2f5;
+  background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%239C92AC' fill-opacity='0.05' fill-rule='evenodd'%3E%3Ccircle cx='3' cy='3' r='3'/%3E%3Ccircle cx='13' cy='13' r='3'/%3E%3C/g%3E%3C/svg%3E");
 }
 
-/* Background Shapes */
-.login-bg-shape {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  z-index: 0;
-  opacity: 0.6;
-}
-
-.shape-1 {
-  width: 400px;
-  height: 400px;
-  background: linear-gradient(to right, #6366f1, #a855f7);
-  top: -100px;
-  left: -100px;
-  animation: float 8s ease-in-out infinite alternate;
-}
-
-.shape-2 {
-  width: 350px;
-  height: 350px;
-  background: linear-gradient(to right, #3b82f6, #06b6d4);
-  bottom: -50px;
-  right: -50px;
-  animation: float 10s ease-in-out infinite alternate-reverse;
-}
-
-@keyframes float {
-  0% {
-    transform: translateY(0) scale(1);
-  }
-  100% {
-    transform: translateY(40px) scale(1.1);
-  }
-}
-
-.login-card {
-  position: relative;
-  width: 380px;
-  padding: 48px 40px;
-  z-index: 10;
-  border-radius: 24px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s ease;
-}
-
-.login-card:hover {
-  transform: translateY(-5px);
-}
-
-.glass-effect {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+.login-box {
+  width: 360px;
+  padding: 40px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 .header {
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: 30px;
 }
 
-.logo-text {
-  font-size: 28px;
-  font-weight: 800;
-  background: linear-gradient(120deg, #6366f1, #a855f7);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+.title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1f2937;
   margin-bottom: 8px;
-  letter-spacing: -0.5px;
 }
 
 .subtitle {
   font-size: 14px;
-  color: #64748b;
+  color: #6b7280;
   margin: 0;
-  font-weight: 500;
 }
 
 .login-btn {
-  height: 44px;
-  font-size: 16px;
-  margin-top: 12px;
-  background: linear-gradient(90deg, #6366f1, #8b5cf6);
-  border: none;
-  transition: all 0.3s ease;
+  font-weight: 500;
 }
 
-.login-btn:hover {
-  opacity: 0.9;
-  transform: shadow(0 10px 20px rgba(99, 102, 241, 0.3));
-}
-
-.icon {
-  font-size: 16px;
-  opacity: 0.6;
-}
-
-.footer {
-  margin-top: 24px;
-  text-align: center;
-  font-size: 14px;
-  color: #64748b;
-  cursor: pointer;
-}
-
-.footer:hover {
-  color: #6366f1;
+.footer-copyright {
+  margin-top: 40px;
+  font-size: 12px;
+  color: #9ca3af;
 }
 </style>

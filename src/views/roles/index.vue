@@ -26,6 +26,7 @@ import {
   restoreRole,
   type Role,
 } from '@/api/roles'
+import { formatDateTime } from '@/utils/date'
 import { getMenus, type Menu } from '@/api/menus'
 import ProTable from '@/components/common/ProTable.vue'
 
@@ -61,8 +62,20 @@ const columns: DataTableColumns<Role> = [
       )
     },
   },
-  { title: '创建时间', key: 'created_at', width: 180, sorter: 'default' },
-  { title: '更新时间', key: 'updated_at', width: 180, sorter: 'default' },
+  {
+    title: '创建时间',
+    key: 'created_at',
+    width: 180,
+    sorter: 'default',
+    render: (row) => formatDateTime(row.created_at),
+  },
+  {
+    title: '更新时间',
+    key: 'updated_at',
+    width: 180,
+    sorter: 'default',
+    render: (row) => formatDateTime(row.updated_at),
+  },
 ]
 
 // Load Data
@@ -315,6 +328,7 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: Role
       show-add
       show-recycle-bin
       show-batch-delete
+      :scroll-x="1200"
     >
       <!-- Removed custom search slot -->
     </ProTable>
@@ -334,6 +348,7 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: Role
         :search-placeholder="'搜索删除了的角色...'"
         :context-menu-options="recycleBinContextMenuOptions"
         @context-menu-select="handleRecycleBinContextMenuSelect"
+        :scroll-x="1200"
       />
     </n-modal>
 

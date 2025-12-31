@@ -23,6 +23,7 @@ import {
   restoreUser,
   type User,
 } from '@/api/users'
+import { formatDateTime } from '@/utils/date'
 import ProTable from '@/components/common/ProTable.vue'
 
 defineOptions({
@@ -78,17 +79,26 @@ const columns: DataTableColumns<User> = [
     key: 'is_superuser',
     width: 120,
     render(row) {
-      return row.is_superuser
-        ? h(NTag, { type: 'warning', bordered: false }, { default: () => '是' })
-        : '否'
+      return h(
+        NTag,
+        { type: row.is_superuser ? 'warning' : 'default', bordered: false },
+        { default: () => (row.is_superuser ? '是' : '否') },
+      )
     },
   },
-  { title: '创建时间', key: 'created_at', width: 180, sorter: 'default' },
   {
-    title: '最后登录',
-    key: 'last_login',
+    title: '创建时间',
+    key: 'created_at',
     width: 180,
-    render: (row) => row.last_login || '从未登录',
+    sorter: 'default',
+    render: (row) => formatDateTime(row.created_at),
+  },
+  {
+    title: '更新时间',
+    key: 'updated_at',
+    width: 180,
+    sorter: 'default',
+    render: (row) => formatDateTime(row.updated_at),
   },
 ]
 
@@ -126,7 +136,7 @@ const handleEdit = (row: User) => {
     email: row.email || '',
     phone: row.phone || '',
     nickname: row.nickname || '',
-    gender: row.gender || 'unknown',
+    gender: row.gender || '保密',
     is_active: row.is_active,
     is_superuser: row.is_superuser,
   }
@@ -145,7 +155,7 @@ const createModel = ref({
   email: '',
   phone: '',
   nickname: '',
-  gender: 'unknown',
+  gender: '保密',
   is_active: true,
   is_superuser: false,
 })
@@ -170,7 +180,7 @@ const handleCreate = () => {
     email: '',
     phone: '',
     nickname: '',
-    gender: 'unknown',
+    gender: '保密',
     is_active: true,
     is_superuser: false,
   }
@@ -340,6 +350,7 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: User
       show-add
       show-recycle-bin
       show-batch-delete
+      :scroll-x="1500"
     >
       <!-- ... -->
     </ProTable>
@@ -359,6 +370,7 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: User
         :search-placeholder="'搜索删除了的用户...'"
         :context-menu-options="recycleBinContextMenuOptions"
         @context-menu-select="handleRecycleBinContextMenuSelect"
+        :scroll-x="1500"
       />
     </n-modal>
 
@@ -394,9 +406,9 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: User
           <n-select
             v-model:value="createModel.gender"
             :options="[
-              { label: '男', value: 'male' },
-              { label: '女', value: 'female' },
-              { label: '保密', value: 'unknown' },
+              { label: '男', value: '男' },
+              { label: '女', value: '女' },
+              { label: '保密', value: '保密' },
             ]"
           />
         </n-form-item>

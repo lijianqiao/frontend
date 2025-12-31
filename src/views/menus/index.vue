@@ -25,6 +25,7 @@ import {
   restoreMenu,
   type Menu,
 } from '@/api/menus'
+import { formatDateTime } from '@/utils/date'
 import ProTable from '@/components/common/ProTable.vue'
 
 defineOptions({
@@ -67,7 +68,13 @@ const columns: DataTableColumns<Menu> = [
       )
     },
   },
-  { title: '创建时间', key: 'created_at', width: 180, sorter: 'default' },
+  {
+    title: '创建时间',
+    key: 'created_at',
+    width: 180,
+    sorter: 'default',
+    render: (row) => formatDateTime(row.created_at),
+  },
 ]
 
 // Load Data
@@ -283,6 +290,8 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: Menu
       @recycle-bin="handleRecycleBin"
       show-add
       show-recycle-bin
+      show-batch-delete
+      :scroll-x="1500"
     >
       <!-- Removed custom search slot -->
     </ProTable>
@@ -302,6 +311,7 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: Menu
         :search-placeholder="'搜索删除了的菜单...'"
         :context-menu-options="recycleBinContextMenuOptions"
         @context-menu-select="handleRecycleBinContextMenuSelect"
+        :scroll-x="1500"
       />
     </n-modal>
 

@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@vicons/ionicons5": "^0.13.0",
+    "dayjs": "^1.11.19",
     "pinia": "^3.0.4",
     "vue": "^3.5.26"
   },
