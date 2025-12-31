@@ -43,6 +43,22 @@ export function getMenus(params?: any) {
   })
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getRecycleBinMenus(params?: any) {
+  return request<ResponseBase<PaginatedResponse<Menu>>>({
+    url: '/menus/recycle-bin',
+    method: 'get',
+    params,
+  })
+}
+
+export function restoreMenu(id: string) {
+  return request<ResponseBase<Menu>>({
+    url: `/menus/${id}/restore`,
+    method: 'post',
+  })
+}
+
 export function createMenu(data: MenuCreate) {
   return request<ResponseBase<Menu>>({
     url: '/menus/',
@@ -63,5 +79,13 @@ export function deleteMenu(id: string) {
   return request<ResponseBase<unknown>>({
     url: `/menus/${id}`,
     method: 'delete',
+  })
+}
+
+export function batchDeleteMenus(ids: string[], hard_delete: boolean = false) {
+  return request<ResponseBase<unknown>>({
+    url: '/menus/batch',
+    method: 'delete',
+    data: { ids, hard_delete },
   })
 }

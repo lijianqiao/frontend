@@ -554,6 +554,87 @@ Format: `application/json`
 
 ---
 
+### 恢复已删除菜单
+
+**URL**: `/api/v1/menus/{id}/restore`
+
+**Method**: `POST`
+
+**Description**:
+
+恢复已删除菜单。
+
+从回收站中恢复指定菜单。
+需要超级管理员权限。
+
+#### Requests Parameters (Query/Path)
+
+| 参数名 | 位置   | 类型     | 必填 | 描述 | Default |
+| :----- | :----- | :------- | :--- | :--- | :------ |
+| `id`   | `path` | `string` | 是   | Id   |         |
+
+#### Responses
+
+**Status Code**: `200` - Successful Response
+
+Format: `application/json`
+
+| 参数名    | 类型           | 必填 | 描述    |
+| :-------- | :------------- | :--- | :------ |
+| `code`    | `integer`      | 否   | Code    |
+| `message` | `string`       | 否   | Message |
+| `data`    | `MenuResponse` | 否   |         |
+
+**Status Code**: `422` - Validation Error
+
+Format: `application/json`
+
+| 参数名   | 类型                     | 必填 | 描述   |
+| :------- | :----------------------- | :--- | :----- |
+| `detail` | `Array[ValidationError]` | 否   | Detail |
+
+---
+
+### 获取菜单回收站列表
+
+**URL**: `/api/v1/menus/recycle-bin`
+
+**Method**: `GET`
+
+**Description**:
+
+获取已删除的菜单列表 (回收站)。
+仅限超级管理员。
+
+#### Requests Parameters (Query/Path)
+
+| 参数名      | 位置    | 类型      | 必填 | 描述      | Default |
+| :---------- | :------ | :-------- | :--- | :-------- | :------ |
+| `page`      | `query` | `integer` | 否   | Page      | 1       |
+| `page_size` | `query` | `integer` | 否   | Page Size | 20      |
+
+#### Responses
+
+**Status Code**: `200` - Successful Response
+
+Format: `application/json`
+
+| 参数名    | 类型                              | 必填 | 描述    |
+| :-------- | :-------------------------------- | :--- | :------ |
+| `code`    | `integer`                         | 否   | Code    |
+| `message` | `string`                          | 否   | Message |
+| `data`    | `PaginatedResponse_MenuResponse_` | 否   |         |
+
+**Status Code**: `422` - Validation Error
+
+Format: `application/json`
+
+| 参数名   | 类型                     | 必填 | 描述   |
+| :------- | :----------------------- | :--- | :----- |
+| `detail` | `Array[ValidationError]` | 否   | Detail |
+
+---
+
 ## Roles
 
 ### 获取角色列表
@@ -774,17 +855,15 @@ Format: `application/json`
 
 **Description**:
 
-删除角色。
-
-删除指定 ID 的角色。
+删除角色 (软删除)。
 
 Args:
 id (UUID): 角色 ID。
-current_user (User): 当前登录用户。
+active_superuser (User): 当前登录超级用户。
 role_service (RoleService): 角色服务依赖。
 
 Returns:
-ResponseBase[RoleResponse]: 已删除的角色对象信息。
+ResponseBase[RoleResponse]: 删除后的角色对象。
 
 #### Requests Parameters (Query/Path)
 
@@ -803,6 +882,87 @@ Format: `application/json`
 | `code`    | `integer`      | 否   | Code    |
 | `message` | `string`       | 否   | Message |
 | `data`    | `RoleResponse` | 否   |         |
+
+**Status Code**: `422` - Validation Error
+
+Format: `application/json`
+
+| 参数名   | 类型                     | 必填 | 描述   |
+| :------- | :----------------------- | :--- | :----- |
+| `detail` | `Array[ValidationError]` | 否   | Detail |
+
+---
+
+### 恢复已删除角色
+
+**URL**: `/api/v1/roles/{id}/restore`
+
+**Method**: `POST`
+
+**Description**:
+
+恢复已删除角色。
+
+从回收站中恢复指定角色。
+需要超级管理员权限。
+
+#### Requests Parameters (Query/Path)
+
+| 参数名 | 位置   | 类型     | 必填 | 描述 | Default |
+| :----- | :----- | :------- | :--- | :--- | :------ |
+| `id`   | `path` | `string` | 是   | Id   |         |
+
+#### Responses
+
+**Status Code**: `200` - Successful Response
+
+Format: `application/json`
+
+| 参数名    | 类型           | 必填 | 描述    |
+| :-------- | :------------- | :--- | :------ |
+| `code`    | `integer`      | 否   | Code    |
+| `message` | `string`       | 否   | Message |
+| `data`    | `RoleResponse` | 否   |         |
+
+**Status Code**: `422` - Validation Error
+
+Format: `application/json`
+
+| 参数名   | 类型                     | 必填 | 描述   |
+| :------- | :----------------------- | :--- | :----- |
+| `detail` | `Array[ValidationError]` | 否   | Detail |
+
+---
+
+### 获取角色回收站列表
+
+**URL**: `/api/v1/roles/recycle-bin`
+
+**Method**: `GET`
+
+**Description**:
+
+获取已删除的角色列表 (回收站)。
+仅限超级管理员。
+
+#### Requests Parameters (Query/Path)
+
+| 参数名      | 位置    | 类型      | 必填 | 描述      | Default |
+| :---------- | :------ | :-------- | :--- | :-------- | :------ |
+| `page`      | `query` | `integer` | 否   | Page      | 1       |
+| `page_size` | `query` | `integer` | 否   | Page Size | 20      |
+
+#### Responses
+
+**Status Code**: `200` - Successful Response
+
+Format: `application/json`
+
+| 参数名    | 类型                              | 必填 | 描述    |
+| :-------- | :-------------------------------- | :--- | :------ |
+| `code`    | `integer`                         | 否   | Code    |
+| `message` | `string`                          | 否   | Message |
+| `data`    | `PaginatedResponse_RoleResponse_` | 否   |         |
 
 **Status Code**: `422` - Validation Error
 
@@ -1056,7 +1216,6 @@ ResponseBase[UserResponse]: 更新后的用户信息。
 | `phone`        | `string`  | 否   | Phone        |
 | `nickname`     | `string`  | 否   | Nickname     |
 | `gender`       | `string`  | 否   | Gender       |
-| `password`     | `string`  | 否   | Password     |
 | `is_active`    | `boolean` | 否   | Is Active    |
 | `is_superuser` | `boolean` | 否   | Is Superuser |
 
@@ -1164,6 +1323,195 @@ ResponseBase[UserResponse]: 用户信息 (密码重置成功后)。
 | 参数名         | 类型     | 必填 | 描述   |
 | :------------- | :------- | :--- | :----- |
 | `new_password` | `string` | 是   | 新密码 |
+
+#### Responses
+
+**Status Code**: `200` - Successful Response
+
+Format: `application/json`
+
+| 参数名    | 类型           | 必填 | 描述    |
+| :-------- | :------------- | :--- | :------ |
+| `code`    | `integer`      | 否   | Code    |
+| `message` | `string`       | 否   | Message |
+| `data`    | `UserResponse` | 否   |         |
+
+**Status Code**: `422` - Validation Error
+
+Format: `application/json`
+
+| 参数名   | 类型                     | 必填 | 描述   |
+| :------- | :----------------------- | :--- | :----- |
+| `detail` | `Array[ValidationError]` | 否   | Detail |
+
+---
+
+### 恢复已删除用户
+
+**URL**: `/api/v1/users/{user_id}/restore`
+
+**Method**: `POST`
+
+**Description**:
+
+恢复已删除用户。
+
+从回收站中恢复指定用户。
+需要超级管理员权限。
+
+#### Requests Parameters (Query/Path)
+
+| 参数名    | 位置   | 类型     | 必填 | 描述    | Default |
+| :-------- | :----- | :------- | :--- | :------ | :------ |
+| `user_id` | `path` | `string` | 是   | User Id |         |
+
+#### Responses
+
+**Status Code**: `200` - Successful Response
+
+Format: `application/json`
+
+| 参数名    | 类型           | 必填 | 描述    |
+| :-------- | :------------- | :--- | :------ |
+| `code`    | `integer`      | 否   | Code    |
+| `message` | `string`       | 否   | Message |
+| `data`    | `UserResponse` | 否   |         |
+
+**Status Code**: `422` - Validation Error
+
+Format: `application/json`
+
+| 参数名   | 类型                     | 必填 | 描述   |
+| :------- | :----------------------- | :--- | :----- |
+| `detail` | `Array[ValidationError]` | 否   | Detail |
+
+---
+
+### 获取用户回收站列表
+
+**URL**: `/api/v1/users/recycle-bin`
+
+**Method**: `GET`
+
+**Description**:
+
+获取已删除的用户列表 (回收站)。
+仅限超级管理员。
+
+#### Requests Parameters (Query/Path)
+
+| 参数名      | 位置    | 类型      | 必填 | 描述      | Default |
+| :---------- | :------ | :-------- | :--- | :-------- | :------ |
+| `page`      | `query` | `integer` | 否   | Page      | 1       |
+| `page_size` | `query` | `integer` | 否   | Page Size | 20      |
+
+#### Responses
+
+**Status Code**: `200` - Successful Response
+
+Format: `application/json`
+
+| 参数名    | 类型                              | 必填 | 描述    |
+| :-------- | :-------------------------------- | :--- | :------ |
+| `code`    | `integer`                         | 否   | Code    |
+| `message` | `string`                          | 否   | Message |
+| `data`    | `PaginatedResponse_UserResponse_` | 否   |         |
+
+**Status Code**: `422` - Validation Error
+
+Format: `application/json`
+
+| 参数名   | 类型                     | 必填 | 描述   |
+| :------- | :----------------------- | :--- | :----- |
+| `detail` | `Array[ValidationError]` | 否   | Detail |
+
+---
+
+### 获取特定用户信息
+
+**URL**: `/api/v1/users/{user_id}`
+
+**Method**: `GET`
+
+**Description**:
+
+获取特定用户的详细信息 (管理员)。
+
+Args:
+user_id (UUID): 目标用户 ID。
+active_superuser (User): 超级管理员权限验证。
+user_service (UserService): 用户服务依赖。
+
+Returns:
+ResponseBase[UserResponse]: 用户详细信息。
+
+#### Requests Parameters (Query/Path)
+
+| 参数名    | 位置   | 类型     | 必填 | 描述    | Default |
+| :-------- | :----- | :------- | :--- | :------ | :------ |
+| `user_id` | `path` | `string` | 是   | User Id |         |
+
+#### Responses
+
+**Status Code**: `200` - Successful Response
+
+Format: `application/json`
+
+| 参数名    | 类型           | 必填 | 描述    |
+| :-------- | :------------- | :--- | :------ |
+| `code`    | `integer`      | 否   | Code    |
+| `message` | `string`       | 否   | Message |
+| `data`    | `UserResponse` | 否   |         |
+
+**Status Code**: `422` - Validation Error
+
+Format: `application/json`
+
+| 参数名   | 类型                     | 必填 | 描述   |
+| :------- | :----------------------- | :--- | :----- |
+| `detail` | `Array[ValidationError]` | 否   | Detail |
+
+---
+
+### 更新用户信息 (管理员)
+
+**URL**: `/api/v1/users/{user_id}`
+
+**Method**: `PUT`
+
+**Description**:
+
+管理员更新用户信息。
+
+允许超级管理员修改任意用户的资料 (昵称、手机号、邮箱、状态等)。
+不包含密码修改 (请使用重置密码接口)。
+
+Args:
+user_id (UUID): 目标用户 ID。
+user_in (UserUpdate): 更新的用户数据。
+active_superuser (User): 超级管理员权限验证。
+user_service (UserService): 用户服务依赖。
+
+Returns:
+ResponseBase[UserResponse]: 更新后的用户信息。
+
+#### Requests Parameters (Query/Path)
+
+| 参数名    | 位置   | 类型     | 必填 | 描述    | Default |
+| :-------- | :----- | :------- | :--- | :------ | :------ |
+| `user_id` | `path` | `string` | 是   | User Id |         |
+
+#### Request Body (application/json)
+
+| 参数名         | 类型      | 必填 | 描述         |
+| :------------- | :-------- | :--- | :----------- |
+| `username`     | `string`  | 否   | Username     |
+| `email`        | `string`  | 否   | Email        |
+| `phone`        | `string`  | 否   | Phone        |
+| `nickname`     | `string`  | 否   | Nickname     |
+| `gender`       | `string`  | 否   | Gender       |
+| `is_active`    | `boolean` | 否   | Is Active    |
+| `is_superuser` | `boolean` | 否   | Is Superuser |
 
 #### Responses
 

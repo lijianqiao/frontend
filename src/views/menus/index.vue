@@ -15,7 +15,16 @@ import {
   NTreeSelect,
   type DropdownOption,
 } from 'naive-ui'
-import { getMenus, createMenu, updateMenu, deleteMenu, type Menu } from '@/api/menus'
+import {
+  getMenus,
+  createMenu,
+  updateMenu,
+  deleteMenu,
+  batchDeleteMenus,
+  getRecycleBinMenus,
+  restoreMenu,
+  type Menu,
+} from '@/api/menus'
 import ProTable from '@/components/common/ProTable.vue'
 
 defineOptions({
@@ -25,41 +34,31 @@ defineOptions({
 const message = useMessage()
 const dialog = useDialog()
 const tableRef = ref()
+const recycleBinTableRef = ref()
 
 // Data source for TreeSelect (flattened or tree)
 const menuOptions = ref<Menu[]>([])
 
 const columns: DataTableColumns<Menu> = [
-  { title: '标题', key: 'title', width: 200, ellipsis: { tooltip: true } },
+  { title: '标题', key: 'title', width: 200, fixed: 'left', ellipsis: { tooltip: true } },
   { title: '名称', key: 'name', width: 150, ellipsis: { tooltip: true } },
-  { title: '路径', key: 'path', ellipsis: { tooltip: true } },
-  {
-    title: '类型',
-    key: 'type',
-    width: 100,
-    render(row) {
-      const typeMap: Record<string, string> = {
-        catalog: '目录',
-        menu: '菜单',
-        button: '按钮',
-      }
-      const typeColor: Record<string, 'default' | 'info' | 'success'> = {
-        catalog: 'default',
-        menu: 'info',
-        button: 'success',
-      }
-      return h(
-        NTag,
-        { type: typeColor[row.type] || 'default', bordered: false },
-        { default: () => typeMap[row.type] || row.type },
-      )
-    },
-  },
+  { title: '类型', key: 'type', width: 80, render: (row) => row.type }, // Simplified render or keep tag. I'll keep tag logic below but inline it or simplify. Let's keep the detailed render for Type.
+  // Actually, I'll rewrite the whole block to be safe.
+  { title: '图标', key: 'icon', width: 150, render: (row) => row.icon || '-' },
+  { title: '路径', key: 'path', width: 200, ellipsis: { tooltip: true } },
+  { title: '组件', key: 'component', width: 200, ellipsis: { tooltip: true } },
+  { title: '权限', key: 'permission', width: 150, ellipsis: { tooltip: true } },
   { title: '排序', key: 'sort', width: 80, sorter: 'default' },
+  { title: '隐藏', key: 'hidden', width: 80, render: (row) => (row.hidden ? '是' : '否') },
   {
     title: '状态',
     key: 'is_active',
     width: 100,
+    filter: true,
+    filterOptions: [
+      { label: '启用', value: true as unknown as string },
+      { label: '停用', value: false as unknown as string },
+    ],
     render(row) {
       return h(
         NTag,
@@ -68,6 +67,7 @@ const columns: DataTableColumns<Menu> = [
       )
     },
   },
+  { title: '创建时间', key: 'created_at', width: 180, sorter: 'default' },
 ]
 
 // Load Data
@@ -212,6 +212,59 @@ const handleDelete = (row: Menu) => {
     },
   })
 }
+
+// Recycle Bin
+const showRecycleBin = ref(false)
+const handleRecycleBin = () => {
+  showRecycleBin.value = true
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const recycleBinRequest = async (params: any) => {
+  const res = await getRecycleBinMenus(params)
+  // Recycle bin API returns PaginatedResponse
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data = res.data as any
+  const items = data.items || []
+  return {
+    data: items,
+    total: data.total || 0,
+  }
+}
+
+const recycleBinContextMenuOptions: DropdownOption[] = [
+  { label: '恢复', key: 'restore' },
+  { label: '彻底删除', key: 'delete' },
+]
+
+const handleRecycleBinContextMenuSelect = async (key: string | number, row: Menu) => {
+  if (key === 'restore') {
+    try {
+      await restoreMenu(row.id)
+      message.success('恢复成功')
+      tableRef.value?.reload()
+      recycleBinTableRef.value?.reload()
+    } catch {
+      // Error handled
+    }
+  }
+  if (key === 'delete') {
+    dialog.warning({
+      title: '彻底删除',
+      content: `确定要彻底删除菜单 ${row.title} 吗? 此操作无法恢复!`,
+      positiveText: '确认',
+      negativeText: '取消',
+      onPositiveClick: async () => {
+        try {
+          await batchDeleteMenus([row.id], true)
+          message.success('彻底删除成功')
+          recycleBinTableRef.value?.reload()
+        } catch {
+          // Error handled
+        }
+      },
+    })
+  }
+}
 </script>
 
 <template>
@@ -221,15 +274,36 @@ const handleDelete = (row: Menu) => {
       title="菜单列表"
       :columns="columns"
       :request="loadData"
-      :row-key="(row) => row.id"
+      :row-key="(row: Menu) => row.id"
       search-placeholder="搜索标题/名称/路径"
       default-expand-all
       :context-menu-options="contextMenuOptions"
       @add="handleCreate"
       @context-menu-select="handleContextMenuSelect"
+      @recycle-bin="handleRecycleBin"
+      show-add
+      show-recycle-bin
     >
       <!-- Removed custom search slot -->
     </ProTable>
+
+    <!-- Recycle Bin Modal -->
+    <n-modal
+      v-model:show="showRecycleBin"
+      preset="card"
+      title="回收站 (已删除菜单)"
+      style="width: 900px"
+    >
+      <ProTable
+        ref="recycleBinTableRef"
+        :columns="columns"
+        :request="recycleBinRequest"
+        :row-key="(row: Menu) => row.id"
+        :search-placeholder="'搜索删除了的菜单...'"
+        :context-menu-options="recycleBinContextMenuOptions"
+        @context-menu-select="handleRecycleBinContextMenuSelect"
+      />
+    </n-modal>
 
     <!-- Create/Edit Modal -->
     <n-modal

@@ -52,6 +52,14 @@ export function deleteRole(id: string) {
   })
 }
 
+export function batchDeleteRoles(ids: string[], hard_delete: boolean = false) {
+  return request<ResponseBase<unknown>>({
+    url: '/roles/batch',
+    method: 'delete',
+    data: { ids, hard_delete },
+  })
+}
+
 // Permission related APIs (placeholder for now)
 export function getRoleMenus(roleId: string) {
   return request<ResponseBase<unknown>>({
@@ -65,5 +73,21 @@ export function updateRoleMenus(roleId: string, menuIds: string[]) {
     url: `/roles/${roleId}/menus`,
     method: 'put',
     data: { menu_ids: menuIds },
+  })
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getRecycleBinRoles(params?: any) {
+  return request<ResponseBase<PaginatedResponse<Role>>>({
+    url: '/roles/recycle-bin',
+    method: 'get',
+    params,
+  })
+}
+
+export function restoreRole(id: string) {
+  return request<ResponseBase<Role>>({
+    url: `/roles/${id}/restore`,
+    method: 'post',
   })
 }

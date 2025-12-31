@@ -20,27 +20,45 @@ import {
   DownloadOutline as DownloadIcon,
 } from '@vicons/ionicons5'
 
-// Define props for the component
-const props = defineProps<{
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  columns: DataTableColumns<any>
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  request: (params: any) => Promise<{ data: any[]; total: number }>
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  rowKey?: (row: any) => string | number
-  title?: string
-  loading?: boolean
-  searchPlaceholder?: string
-  contextMenuOptions?: DropdownOption[]
-}>()
+// Define props with defaults
+const props = withDefaults(
+  defineProps<{
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    columns: DataTableColumns<any>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    request: (params: any) => Promise<{ data: any[]; total: number }>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rowKey?: (row: any) => string | number
+    title?: string
+    loading?: boolean
+    searchPlaceholder?: string
+    contextMenuOptions?: DropdownOption[]
+    scrollX?: number
+    showAdd?: boolean
+    showRecycleBin?: boolean
+    showBatchDelete?: boolean
+  }>(),
+  {
+    scrollX: 1000,
+    title: '',
+    searchPlaceholder: '请输入关键字搜索...',
+    loading: false,
+    contextMenuOptions: () => [],
+    showAdd: false,
+    showRecycleBin: false,
+    showBatchDelete: false,
+  },
+)
 
-const emit = defineEmits([
-  'update:checked-row-keys',
-  'add',
-  'batch-delete',
-  'reset',
-  'context-menu-select',
-])
+const emit = defineEmits<{
+  (e: 'update:checked-row-keys', keys: Array<string | number>): void
+  (e: 'add'): void
+  (e: 'batch-delete', keys: Array<string | number>): void
+  (e: 'reset'): void
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (e: 'context-menu-select', key: string | number, row: any): void
+  (e: 'recycle-bin'): void
+}>()
 
 // State
 const tableLoading = ref(false)
@@ -66,6 +84,28 @@ const pagination = reactive<PaginationProps>({
     handleSearch()
   },
 })
+
+// Filters State
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const filters = ref<Record<string, any>>({})
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const handleFiltersChange = (newFilters: Record<string, any>) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const formattedFilters: Record<string, any> = {}
+  Object.keys(newFilters).forEach((key) => {
+    const val = newFilters[key]
+    if (Array.isArray(val)) {
+      if (val.length > 0) formattedFilters[key] = val[0]
+    } else if (val !== null && val !== undefined) {
+      formattedFilters[key] = val
+    }
+  })
+
+  filters.value = formattedFilters
+  pagination.page = 1
+  handleSearch()
+}
 
 // Context Menu State
 const showDropdown = ref(false)
@@ -108,6 +148,7 @@ const handleSearch = async () => {
       page: pagination.page,
       page_size: pagination.pageSize,
       keyword: keyword.value,
+      ...filters.value,
     })
 
     data.value = res.data
@@ -166,7 +207,7 @@ const handleExport = () => {
     ),
   ].join('\n')
 
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
   const link = document.createElement('a')
   const url = URL.createObjectURL(blob)
   link.setAttribute('href', url)
@@ -208,6 +249,15 @@ onMounted(() => {
           <n-button type="primary" @click="handleSearchClick">搜索</n-button>
           <n-button @click="handleResetClick">重置</n-button>
         </n-space>
+
+        <div style="margin-left: auto">
+          <n-button v-if="showRecycleBin" type="warning" ghost @click="$emit('recycle-bin')">
+            <template #icon>
+              <n-icon><TrashIcon /></n-icon>
+            </template>
+            回收站
+          </n-button>
+        </div>
       </div>
       <!-- Backward compatibility for custom search slot if needed -->
       <div v-if="$slots.search" style="margin-top: 12px">
@@ -222,14 +272,8 @@ onMounted(() => {
         <div class="title">{{ title }}</div>
         <n-space>
           <slot name="toolbar-left">
-            <n-button v-if="$attrs.onAdd" type="primary" @click="$emit('add')">
-              <template #icon>
-                <n-icon><AddIcon /></n-icon>
-              </template>
-              新建
-            </n-button>
             <n-button
-              v-if="checkedRowKeys.length > 0 && $attrs.onBatchDelete"
+              v-if="checkedRowKeys.length > 0 && showBatchDelete"
               type="error"
               @click="$emit('batch-delete', checkedRowKeys)"
             >
@@ -239,6 +283,14 @@ onMounted(() => {
               批量删除
             </n-button>
           </slot>
+
+          <!-- Create Button (Moved here, before Export) -->
+          <n-button v-if="showAdd" type="primary" @click="$emit('add')">
+            <template #icon>
+              <n-icon><AddIcon /></n-icon>
+            </template>
+            新建
+          </n-button>
 
           <n-button secondary @click="handleExport" title="导出 CSV">
             <template #icon>
@@ -264,7 +316,8 @@ onMounted(() => {
         :row-key="rowKey"
         :row-props="rowProps"
         @update:checked-row-keys="handleCheck"
-        :scroll-x="1000"
+        @update:filters="handleFiltersChange"
+        :scroll-x="scrollX"
         flex-height
         style="height: 600px"
       />

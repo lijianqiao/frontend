@@ -31,8 +31,8 @@ export function login(data: LoginParams) {
 
 export function getUserInfo() {
   return request<ResponseBase<User>>({
-    url: '/auth/test-token',
-    method: 'post',
+    url: '/users/me',
+    method: 'get',
   })
 }
 

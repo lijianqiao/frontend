@@ -44,11 +44,35 @@ export function createUser(data: UserCreate) {
   })
 }
 
+export function updateUser(id: string | number, data: UserUpdate) {
+  return request<ResponseBase<User>>({
+    url: `/users/${id}`,
+    method: 'put',
+    data,
+  })
+}
+
 export function batchDeleteUsers(ids: string[], hard_delete: boolean = false) {
   return request<ResponseBase<unknown>>({
     url: '/users/batch',
     method: 'delete',
     data: { ids, hard_delete },
+  })
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getRecycleBinUsers(params?: any) {
+  return request<ResponseBase<PaginatedResponse<User>>>({
+    url: '/users/recycle-bin',
+    method: 'get',
+    params,
+  })
+}
+
+export function restoreUser(id: string) {
+  return request<ResponseBase<User>>({
+    url: `/users/${id}/restore`,
+    method: 'post',
   })
 }
 

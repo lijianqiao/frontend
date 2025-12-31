@@ -19,8 +19,11 @@ import {
   createRole,
   updateRole,
   deleteRole,
+  batchDeleteRoles,
   getRoleMenus,
   updateRoleMenus,
+  getRecycleBinRoles,
+  restoreRole,
   type Role,
 } from '@/api/roles'
 import { getMenus, type Menu } from '@/api/menus'
@@ -33,16 +36,23 @@ defineOptions({
 const message = useMessage()
 const dialog = useDialog()
 const tableRef = ref()
+const recycleBinTableRef = ref()
 
 // Columns
 const columns: DataTableColumns<Role> = [
-  { type: 'selection' },
-  { title: '角色名称', key: 'name', sorter: 'default' },
-  { title: '角色标识', key: 'code', sorter: 'default' },
-  { title: '描述', key: 'description', ellipsis: { tooltip: true } },
+  { type: 'selection', fixed: 'left' },
+  { title: '角色名称', key: 'name', width: 150, fixed: 'left', sorter: 'default' },
+  { title: '角色标识', key: 'code', width: 150, fixed: 'left', sorter: 'default' },
+  { title: '描述', key: 'description', width: 200, ellipsis: { tooltip: true } },
   {
     title: '状态',
     key: 'is_active',
+    width: 100,
+    filter: true,
+    filterOptions: [
+      { label: '启用', value: true as unknown as string },
+      { label: '停用', value: false as unknown as string },
+    ],
     render(row) {
       return h(
         NTag,
@@ -52,6 +62,7 @@ const columns: DataTableColumns<Role> = [
     },
   },
   { title: '创建时间', key: 'created_at', width: 180, sorter: 'default' },
+  { title: '更新时间', key: 'updated_at', width: 180, sorter: 'default' },
 ]
 
 // Load Data
@@ -234,6 +245,57 @@ const submitPermissions = async () => {
     permLoading.value = false
   }
 }
+
+// Recycle Bin
+const showRecycleBin = ref(false)
+const handleRecycleBin = () => {
+  showRecycleBin.value = true
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const recycleBinRequest = async (params: any) => {
+  const res = await getRecycleBinRoles(params)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data = res.data as any
+  return {
+    data: data.items,
+    total: data.total,
+  }
+}
+
+const recycleBinContextMenuOptions: DropdownOption[] = [
+  { label: '恢复', key: 'restore' },
+  { label: '彻底删除', key: 'delete' },
+]
+
+const handleRecycleBinContextMenuSelect = async (key: string | number, row: Role) => {
+  if (key === 'restore') {
+    try {
+      await restoreRole(row.id)
+      message.success('恢复成功')
+      tableRef.value?.reload()
+      recycleBinTableRef.value?.reload()
+    } catch {
+      // Error handled
+    }
+  }
+  if (key === 'delete') {
+    dialog.warning({
+      title: '彻底删除',
+      content: `确定要彻底删除角色 ${row.name} 吗? 此操作无法恢复!`,
+      positiveText: '确认',
+      negativeText: '取消',
+      onPositiveClick: async () => {
+        try {
+          await batchDeleteRoles([row.id], true)
+          message.success('彻底删除成功')
+          recycleBinTableRef.value?.reload()
+        } catch {
+          // Error handled
+        }
+      },
+    })
+  }
+}
 </script>
 
 <template>
@@ -243,15 +305,37 @@ const submitPermissions = async () => {
       title="角色列表"
       :columns="columns"
       :request="loadData"
-      :row-key="(row) => row.id"
+      :row-key="(row: Role) => row.id"
       search-placeholder="搜索角色名称/标识"
       :context-menu-options="contextMenuOptions"
       @add="handleCreate"
       @batch-delete="handleBatchDelete"
       @context-menu-select="handleContextMenuSelect"
+      @recycle-bin="handleRecycleBin"
+      show-add
+      show-recycle-bin
+      show-batch-delete
     >
       <!-- Removed custom search slot -->
     </ProTable>
+
+    <!-- Recycle Bin Modal -->
+    <n-modal
+      v-model:show="showRecycleBin"
+      preset="card"
+      title="回收站 (已删除角色)"
+      style="width: 800px"
+    >
+      <ProTable
+        ref="recycleBinTableRef"
+        :columns="columns"
+        :request="recycleBinRequest"
+        :row-key="(row: Role) => row.id"
+        :search-placeholder="'搜索删除了的角色...'"
+        :context-menu-options="recycleBinContextMenuOptions"
+        @context-menu-select="handleRecycleBinContextMenuSelect"
+      />
+    </n-modal>
 
     <!-- Create/Edit Modal -->
     <n-modal
