@@ -2,30 +2,31 @@ import { request } from '@/utils/request'
 import type { ResponseBase, PaginatedResponse } from '@/types/api'
 
 export interface LoginLog {
-  id: number
+  id: string
   user_id: string
-  province: string | null
-  city: string | null
-  ip_address: string
+  username: string
+  ip: string
   user_agent: string
   browser: string
   os: string
   device: string
-  login_time: string
+  status: boolean
+  msg: string
+  created_at: string
 }
 
 export interface OperationLog {
-  id: number
+  id: string
   user_id: string
   username: string
+  ip: string
   module: string
   summary: string
   method: string
   path: string
-  status_code: number
-  ip_address: string
+  response_code: number
+  duration: number
   created_at: string
-  latency: number
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

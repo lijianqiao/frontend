@@ -28,7 +28,7 @@ const router = createRouter({
         },
         {
           path: 'users',
-          name: 'UserManagement',
+          name: 'UserMgmt',
           component: () => import('@/views/users/index.vue'),
           meta: {
             title: '用户管理',
@@ -37,7 +37,7 @@ const router = createRouter({
         },
         {
           path: 'roles',
-          name: 'RoleManagement',
+          name: 'RoleMgmt',
           component: () => import('@/views/roles/index.vue'),
           meta: {
             title: '角色管理',
@@ -46,7 +46,7 @@ const router = createRouter({
         },
         {
           path: 'menus',
-          name: 'MenuManagement',
+          name: 'MenuMgmt',
           component: () => import('@/views/menus/index.vue'),
           meta: {
             title: '菜单管理',
@@ -55,7 +55,7 @@ const router = createRouter({
         },
         {
           path: 'logs/login',
-          name: 'LoginLogs',
+          name: 'LoginLog',
           component: () => import('@/views/logs/login/index.vue'),
           meta: {
             title: '登录日志',
@@ -64,7 +64,7 @@ const router = createRouter({
         },
         {
           path: 'logs/operation',
-          name: 'OperationLogs',
+          name: 'OperationLog',
           component: () => import('@/views/logs/operation/index.vue'),
           meta: {
             title: '操作日志',

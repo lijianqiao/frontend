@@ -1,57 +1,150 @@
 <script setup lang="ts">
-import { ref, reactive, h } from 'vue'
-import { NInput, NFormItem, type DataTableColumns, NTag } from 'naive-ui'
+import { ref, h } from 'vue'
+import {
+  type DataTableColumns,
+  NTag,
+  NDrawer,
+  NDrawerContent,
+  NDescriptions,
+  NDescriptionsItem,
+  type DropdownOption,
+} from 'naive-ui'
 import { getOperationLogs, type OperationLog } from '@/api/logs'
 import ProTable from '@/components/common/ProTable.vue'
+import { formatDateTime } from '@/utils/date'
 
 defineOptions({
   name: 'OperationLogs',
 })
 
 const tableRef = ref()
-const searchParams = reactive({
-  username: '',
-  module: '',
-  ip_address: '',
-})
+
+// Current selected log for details drawer
+const currentLog = ref<OperationLog | null>(null)
+const drawerVisible = ref(false)
+
+const handleViewDetails = (row: OperationLog) => {
+  currentLog.value = row
+  drawerVisible.value = true
+}
+
+const contextMenuOptions: DropdownOption[] = [
+  {
+    label: '查看详情',
+    key: 'details',
+  },
+]
+
+const handleContextMenuSelect = (key: string | number, row: OperationLog) => {
+  if (key === 'details') {
+    handleViewDetails(row)
+  }
+}
 
 const columns: DataTableColumns<OperationLog> = [
   { title: '操作人', key: 'username', width: 100 },
-  { title: '模块', key: 'module', width: 120 },
-  { title: '内容', key: 'summary' },
+  {
+    title: '模块',
+    key: 'module',
+    width: 120,
+    filterMultiple: false,
+    filterOptions: [
+      { label: '用户管理', value: 'users' },
+      { label: '角色管理', value: 'roles' },
+      { label: '菜单管理', value: 'menus' },
+      { label: '认证模块', value: 'auth' },
+      { label: '日志模块', value: 'logs' },
+    ],
+  },
+  { title: '内容', key: 'summary', ellipsis: { tooltip: true } },
   {
     title: '方法',
     key: 'method',
-    width: 80,
+    width: 100,
+    filterMultiple: false,
+    filterOptions: [
+      { label: 'GET', value: 'GET' },
+      { label: 'POST', value: 'POST' },
+      { label: 'PUT', value: 'PUT' },
+      { label: 'DELETE', value: 'DELETE' },
+      { label: 'PATCH', value: 'PATCH' },
+    ],
     render(row) {
-      return h(NTag, { type: 'info', size: 'small' }, { default: () => row.method })
+      let type: 'default' | 'info' | 'success' | 'warning' | 'error' = 'default'
+      switch (row.method) {
+        case 'GET':
+          type = 'info'
+          break
+        case 'POST':
+          type = 'success'
+          break
+        case 'PUT':
+          type = 'warning'
+          break
+        case 'DELETE':
+          type = 'error'
+          break
+      }
+      return h(NTag, { type, size: 'small' }, { default: () => row.method })
     },
   },
-  { title: '路径', key: 'path' },
+  { title: '路径', key: 'path', ellipsis: { tooltip: true } },
   {
     title: '状态码',
-    key: 'status_code',
-    width: 80,
+    key: 'response_code',
+    width: 100,
+    filterMultiple: false,
+    filterOptions: [
+      { label: '200 OK', value: 200 },
+      { label: '201 Created', value: 201 },
+      { label: '400 Bad Request', value: 400 },
+      { label: '401 Unauthorized', value: 401 },
+      { label: '403 Forbidden', value: 403 },
+      { label: '404 Not Found', value: 404 },
+      { label: '422 Unprocessable', value: 422 },
+      { label: '500 Server Error', value: 500 },
+    ],
     render(row) {
       return h(
         NTag,
-        { type: row.status_code < 400 ? 'success' : 'error', size: 'small' },
-        { default: () => row.status_code },
+        { type: row.response_code < 400 ? 'success' : 'error', size: 'small' },
+        { default: () => row.response_code },
       )
     },
   },
-  { title: 'IP地址', key: 'ip_address', width: 130 },
-  { title: '耗时(ms)', key: 'latency', width: 90 },
-  { title: '操作时间', key: 'created_at', width: 180 },
+  { title: 'IP地址', key: 'ip', width: 130 },
+  {
+    title: '耗时(s)',
+    key: 'duration',
+    width: 100,
+    sorter: 'default',
+    render: (row) => row.duration.toFixed(3),
+  },
+  {
+    title: '操作时间',
+    key: 'created_at',
+    width: 180,
+    sorter: 'default',
+    render: (row) => formatDateTime(row.created_at),
+  },
 ]
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const loadData = async (params: any) => {
-  const { page, page_size } = params
+  // ProTable passes flattened params
+  const { page, page_size, keyword, module, method, response_code, sort } = params
+
+  const filterParams: Record<string, unknown> = {}
+  if (module) filterParams.module = module
+  if (method) filterParams.method = method
+  if (response_code) filterParams.response_code = response_code
+
   const res = await getOperationLogs({
     page,
     page_size,
-    ...searchParams,
+    keyword,
+    ...filterParams,
+    sort,
   })
   return {
     data: res.data.items,
@@ -59,11 +152,7 @@ const loadData = async (params: any) => {
   }
 }
 
-const handleReset = () => {
-  searchParams.username = ''
-  searchParams.module = ''
-  searchParams.ip_address = ''
-}
+const handleReset = () => {}
 </script>
 
 <template>
@@ -74,20 +163,52 @@ const handleReset = () => {
       :columns="columns"
       :request="loadData"
       :row-key="(row) => row.id"
+      :context-menu-options="contextMenuOptions"
+      @context-menu-select="handleContextMenuSelect"
       @reset="handleReset"
-    >
-      <template #search>
-        <n-form-item label="操作人">
-          <n-input v-model:value="searchParams.username" placeholder="请输入操作人" clearable />
-        </n-form-item>
-        <n-form-item label="模块">
-          <n-input v-model:value="searchParams.module" placeholder="请输入模块" clearable />
-        </n-form-item>
-        <n-form-item label="IP地址">
-          <n-input v-model:value="searchParams.ip_address" placeholder="请输入IP地址" clearable />
-        </n-form-item>
-      </template>
-    </ProTable>
+    />
+
+    <n-drawer v-model:show="drawerVisible" width="600" placement="right">
+      <n-drawer-content title="审计详情">
+        <n-descriptions :column="1" bordered label-placement="left" v-if="currentLog">
+          <n-descriptions-item label="ID">
+            {{ currentLog.id }}
+          </n-descriptions-item>
+          <n-descriptions-item label="操作人">
+            {{ currentLog.username }}
+          </n-descriptions-item>
+          <n-descriptions-item label="用户ID">
+            {{ currentLog.user_id }}
+          </n-descriptions-item>
+          <n-descriptions-item label="IP地址">
+            {{ currentLog.ip }}
+          </n-descriptions-item>
+          <n-descriptions-item label="模块">
+            <n-tag>{{ currentLog.module }}</n-tag>
+          </n-descriptions-item>
+          <n-descriptions-item label="操作内容">
+            {{ currentLog.summary }}
+          </n-descriptions-item>
+          <n-descriptions-item label="请求方法">
+            <n-tag type="info">{{ currentLog.method }}</n-tag>
+          </n-descriptions-item>
+          <n-descriptions-item label="请求路径">
+            <div style="word-break: break-all">{{ currentLog.path }}</div>
+          </n-descriptions-item>
+          <n-descriptions-item label="响应状态码">
+            <n-tag :type="currentLog.response_code < 400 ? 'success' : 'error'">
+              {{ currentLog.response_code }}
+            </n-tag>
+          </n-descriptions-item>
+          <n-descriptions-item label="请求耗时">
+            {{ currentLog.duration.toFixed(4) }} 秒
+          </n-descriptions-item>
+          <n-descriptions-item label="操作时间">
+            {{ formatDateTime(currentLog.created_at) }}
+          </n-descriptions-item>
+        </n-descriptions>
+      </n-drawer-content>
+    </n-drawer>
   </div>
 </template>
 

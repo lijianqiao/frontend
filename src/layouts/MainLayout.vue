@@ -1,16 +1,11 @@
 <script setup lang="ts">
-import { h, ref, computed } from 'vue'
+import { h, ref, computed, onMounted } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { NIcon, type MenuOption, NBreadcrumb, NBreadcrumbItem, NDropdown } from 'naive-ui'
-import {
-  BookOutline as BookIcon,
-  PersonOutline as PersonIcon,
-  WineOutline as WineIcon,
-  MenuOutline as MenuIcon,
-  LogOutOutline as LogoutIcon,
-  PersonCircleOutline as UserIcon,
-} from '@vicons/ionicons5'
+import * as Ionicons from '@vicons/ionicons5'
+import { PersonCircleOutline as UserIcon, LogOutOutline as LogoutIcon } from '@vicons/ionicons5'
 import { useUserStore } from '@/stores/user'
+import type { Menu } from '@/api/menus'
 
 defineOptions({
   name: 'MainLayout',
@@ -19,68 +14,57 @@ defineOptions({
 const userStore = useUserStore()
 const route = useRoute()
 
-function renderIcon(icon: unknown) {
-  return () => h(NIcon, null, { default: () => h(icon as object) })
+// Icon map for dynamic resolution
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const iconsMap = Ionicons as Record<string, any>
+
+function renderIcon(iconName: string | null) {
+  if (!iconName) return undefined
+  // Try to find exact match
+  let icon = iconsMap[iconName]
+  // Fallback: try appending 'Outline' if not found (common pattern)
+  if (!icon && !iconName.endsWith('Outline')) {
+    icon = iconsMap[`${iconName}Outline`]
+  }
+  if (!icon) return undefined
+  return () => h(NIcon, null, { default: () => h(icon) })
 }
 
-const menuOptions: MenuOption[] = [
-  {
-    label: () =>
-      h(
-        RouterLink,
-        {
-          to: {
-            name: 'Dashboard',
+// Transform backend menu data to Naive UI MenuOption
+function transformMenuToOption(menu: Menu): MenuOption {
+  // If type is not explicitly returned, infer from children presence.
+  const hasChildren = menu.children && menu.children.length > 0
+  const isLeaf = menu.type === 'menu' || (!hasChildren && menu.type !== 'catalog')
+  const routeName = menu.name
+
+  const label = isLeaf
+    ? () =>
+        h(
+          RouterLink,
+          {
+            to: { name: routeName },
           },
-        },
-        { default: () => '仪表盘' },
-      ),
-    key: 'dashboard',
-    icon: renderIcon(BookIcon),
-  },
-  {
-    label: () =>
-      h(
-        RouterLink,
-        {
-          to: {
-            name: 'UserManagement',
-          },
-        },
-        { default: () => '用户管理' },
-      ),
-    key: 'users',
-    icon: renderIcon(PersonIcon),
-  },
-  {
-    label: () =>
-      h(
-        RouterLink,
-        {
-          to: {
-            name: 'RoleManagement',
-          },
-        },
-        { default: () => '角色管理' },
-      ),
-    key: 'roles',
-    icon: renderIcon(WineIcon),
-  },
-  {
-    label: () =>
-      h(
-        RouterLink,
-        {
-          to: {
-            name: 'MenuManagement',
-          },
-        },
-        { default: () => '菜单管理' },
-      ),
-    key: 'menus',
-    icon: renderIcon(MenuIcon),
-  },
-]
+          { default: () => menu.title },
+        )
+    : menu.title
+
+  const option: MenuOption = {
+    label: label,
+    key: isLeaf ? routeName : menu.id, // Use route name as key for active state mapping if leaf, else ID
+    icon: renderIcon(menu.icon),
+  }
+
+  if (menu.children && menu.children.length > 0) {
+    option.children = menu.children.map(transformMenuToOption)
+  }
+
+  return option
+}
+
+// Computed Menu Options
+const menuOptions = computed(() => {
+  return userStore.userMenus.map(transformMenuToOption)
+})
 
 const collapsed = ref(false)
 
@@ -92,7 +76,7 @@ const userDropdownOptions = [
   {
     label: '退出登录',
     key: 'logout',
-    icon: renderIcon(LogoutIcon),
+    icon: () => h(NIcon, null, { default: () => h(LogoutIcon) }),
   },
 ]
 
@@ -103,15 +87,17 @@ const handleUserDropdownSelect = (key: string) => {
 }
 
 const activeKey = computed(() => {
-  // Map route name to menu key
-  if (route.name === 'UserManagement') return 'users'
-  if (route.name === 'RoleManagement') return 'roles'
-  if (route.name === 'MenuManagement') return 'menus'
-  return 'dashboard'
+  return route.name as string
 })
 
 const breadcrumbs = computed(() => {
   return route.matched.filter((r) => r.meta && r.meta.title).map((r) => r.meta.title as string)
+})
+
+onMounted(() => {
+  if (userStore.userMenus.length === 0) {
+    userStore.fetchUserMenus()
+  }
 })
 </script>
 

@@ -89,3 +89,20 @@ export function batchDeleteMenus(ids: string[], hard_delete: boolean = false) {
     data: { ids, hard_delete },
   })
 }
+
+// 侧边栏菜单（当前用户可见）
+export function getMyMenus() {
+  return request<ResponseBase<Menu[]>>({
+    url: '/menus/me',
+    method: 'get',
+  })
+}
+
+// 角色分配权限用的菜单树选项
+
+export function getMenuOptions() {
+  return request<ResponseBase<Menu[]>>({
+    url: '/menus/options',
+    method: 'get',
+  })
+}
