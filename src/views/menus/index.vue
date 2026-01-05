@@ -50,21 +50,15 @@ const columns: DataTableColumns<Menu> = [
   { title: '组件', key: 'component', width: 200, ellipsis: { tooltip: true } },
   { title: '权限', key: 'permission', width: 150, ellipsis: { tooltip: true } },
   { title: '排序', key: 'sort', width: 80, sorter: 'default' },
-  { title: '隐藏', key: 'hidden', width: 80, render: (row) => (row.hidden ? '是' : '否') },
   {
-    title: '状态',
-    key: 'is_active',
-    width: 100,
-    filter: true,
-    filterOptions: [
-      { label: '启用', value: true as unknown as string },
-      { label: '停用', value: false as unknown as string },
-    ],
+    title: '隐藏',
+    key: 'is_hidden',
+    width: 80,
     render(row) {
       return h(
         NTag,
-        { type: row.is_active ? 'success' : 'error', bordered: false },
-        { default: () => (row.is_active ? '启用' : '停用') },
+        { type: row.is_hidden ? 'warning' : 'success', bordered: false },
+        { default: () => (row.is_hidden ? '是' : '否') },
       )
     },
   },
@@ -80,11 +74,8 @@ const columns: DataTableColumns<Menu> = [
 // Load Data
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const loadData = async (params: any) => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { page, page_size, keyword } = params
-  // API currently returns all menus (tree structure or flat), we might need to handle keyword filtering client side
-  // if backend doesn't support it yet. But plan says backend will.
-  const res = await getMenus({ keyword })
+  // Pass all params (page, page_size, keyword) to the API
+  const res = await getMenus(params)
 
   // Fix: API returns PaginatedResponse
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -92,7 +83,15 @@ const loadData = async (params: any) => {
   const items = data.items || []
   const total = data.total || 0
 
-  menuOptions.value = items // Store for TreeSelect
+  // Update store or local state if this logic is used for TreeSelect elsewhere
+  // But here we just return for the table.
+  // Note: If keyword is present, the backend might return a flat list or filtered tree.
+  // We assume the backend handles the structure.
+  if (!params.keyword) {
+    // Only update the tree select options when loading the full list (no keyword)
+    // or we could just always update it if the format is compatible.
+    menuOptions.value = items
+  }
 
   return {
     data: items,
@@ -126,8 +125,7 @@ const model = ref({
   icon: '' as string | null,
   sort: 0,
   permission: '' as string | null,
-  hidden: false,
-  is_active: true,
+  is_hidden: false,
 })
 
 const rules = {
@@ -149,8 +147,7 @@ const handleCreate = () => {
     icon: '',
     sort: 0,
     permission: '',
-    hidden: false,
-    is_active: true,
+    is_hidden: false,
   }
   showModal.value = true
 }
@@ -168,8 +165,7 @@ const handleEdit = (row: Menu) => {
     icon: row.icon || '',
     sort: row.sort,
     permission: row.permission || '',
-    hidden: row.hidden,
-    is_active: row.is_active,
+    is_hidden: row.is_hidden,
   }
   showModal.value = true
 }
@@ -282,7 +278,7 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: Menu
       :columns="columns"
       :request="loadData"
       :row-key="(row: Menu) => row.id"
-      search-placeholder="搜索标题/名称/路径"
+      search-placeholder="搜索标题/名称/路径/权限标识"
       default-expand-all
       :context-menu-options="contextMenuOptions"
       @add="handleCreate"
@@ -367,11 +363,8 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: Menu
         <n-form-item label="图标" path="icon">
           <n-input v-model:value="model.icon" />
         </n-form-item>
-        <n-form-item label="状态" path="is_active">
-          <n-switch v-model:value="model.is_active" />
-        </n-form-item>
-        <n-form-item label="隐藏" path="hidden">
-          <n-switch v-model:value="model.hidden" />
+        <n-form-item label="隐藏" path="is_hidden">
+          <n-switch v-model:value="model.is_hidden" />
         </n-form-item>
       </n-form>
       <template #action>

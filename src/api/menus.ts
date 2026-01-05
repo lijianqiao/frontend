@@ -12,8 +12,7 @@ export interface Menu {
   sort: number
   type: 'catalog' | 'menu' | 'button'
   permission: string | null
-  hidden: boolean
-  is_active: boolean
+  is_hidden: boolean
   created_at: string
   children?: Menu[]
 }
@@ -28,8 +27,7 @@ export interface MenuCreate {
   sort?: number
   type: 'catalog' | 'menu' | 'button'
   permission?: string | null
-  hidden?: boolean
-  is_active?: boolean
+  is_hidden?: boolean
 }
 
 export type MenuUpdate = Partial<MenuCreate>

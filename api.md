@@ -203,6 +203,7 @@ current_user (User): 当前登录用户。
 log_service (LogService): 日志服务依赖。
 page (int, optional): 页码. Defaults to 1.
 page_size (int, optional): 每页数量. Defaults to 20.
+keyword (str | None, optional): 关键词过滤. Defaults to None.
 
 Returns:
 ResponseBase[PaginatedResponse[LoginLogResponse]]: 分页后的登录日志列表。
@@ -254,6 +255,7 @@ current_user (User): 当前登录用户。
 log_service (LogService): 日志服务依赖。
 page (int, optional): 页码. Defaults to 1.
 page_size (int, optional): 每页数量. Defaults to 20.
+keyword (str | None, optional): 关键词过滤. Defaults to None.
 
 Returns:
 ResponseBase[PaginatedResponse[OperationLogResponse]]: 分页后的操作日志列表。
@@ -355,6 +357,7 @@ current_user (User): 当前登录用户。
 menu_service (MenuService): 菜单服务依赖。
 page (int, optional): 页码. Defaults to 1.
 page_size (int, optional): 每页数量. Defaults to 20.
+keyword (str | None, optional): 关键词过滤. Defaults to None.
 
 Returns:
 ResponseBase[PaginatedResponse[MenuResponse]]: 分页后的菜单列表。
@@ -706,6 +709,7 @@ role_service (RoleService): 角色服务依赖。
 current_user (User): 当前登录用户。
 page (int, optional): 页码. Defaults to 1.
 page_size (int, optional): 每页数量. Defaults to 20.
+keyword (str | None, optional): 关键词过滤. Defaults to None.
 
 Returns:
 ResponseBase[PaginatedResponse[RoleResponse]]: 分页后的角色列表。
@@ -1070,6 +1074,7 @@ current_user (User): 当前登录用户。
 active_superuser (User): 超级管理员权限验证。
 page (int, optional): 页码. Defaults to 1.
 page_size (int, optional): 每页数量. Defaults to 20.
+keyword (str | None, optional): 关键词过滤. Defaults to None.
 
 Returns:
 ResponseBase[PaginatedResponse[UserResponse]]: 分页后的用户列表。

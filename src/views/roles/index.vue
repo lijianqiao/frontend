@@ -319,7 +319,7 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: Role
       :columns="columns"
       :request="loadData"
       :row-key="(row: Role) => row.id"
-      search-placeholder="搜索角色名称/标识"
+      search-placeholder="搜索角色名称/角色标识/描述"
       :context-menu-options="contextMenuOptions"
       @add="handleCreate"
       @batch-delete="handleBatchDelete"

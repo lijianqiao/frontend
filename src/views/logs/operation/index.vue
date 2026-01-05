@@ -164,6 +164,7 @@ const handleReset = () => {}
       :request="loadData"
       :row-key="(row) => row.id"
       :context-menu-options="contextMenuOptions"
+      search-placeholder="搜索操作人/IP/模块/操作内容/请求方法/路径"
       @context-menu-select="handleContextMenuSelect"
       @reset="handleReset"
     />

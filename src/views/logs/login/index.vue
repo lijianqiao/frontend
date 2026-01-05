@@ -126,6 +126,7 @@ const handleReset = () => {
       :request="loadData"
       :row-key="(row) => row.id"
       :context-menu-options="contextMenuOptions"
+      search-placeholder="搜索用户名/IP/提示信息/浏览器/操作系统/设备"
       @context-menu-select="handleContextMenuSelect"
       @reset="handleReset"
     />
