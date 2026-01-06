@@ -9,7 +9,6 @@ import {
   useMessage,
   useDialog,
   type DataTableColumns,
-  NTag,
   NTree,
   type TreeOption,
   type DropdownOption,
@@ -28,7 +27,7 @@ import {
 } from '@/api/roles'
 import { formatDateTime } from '@/utils/date'
 import { getMenus, type Menu } from '@/api/menus'
-import ProTable from '@/components/common/ProTable.vue'
+import ProTable, { type FilterConfig } from '@/components/common/ProTable.vue'
 
 defineOptions({
   name: 'RoleManagement',
@@ -38,6 +37,18 @@ const message = useMessage()
 const dialog = useDialog()
 const tableRef = ref()
 const recycleBinTableRef = ref()
+
+const handleStatusChange = async (row: Role, value: boolean) => {
+  const originalValue = row.is_active
+  try {
+    row.is_active = value
+    await updateRole(row.id, { is_active: value })
+    message.success(`${value ? '启用' : '停用'}成功`)
+  } catch (error) {
+    row.is_active = originalValue
+    console.error(error)
+  }
+}
 
 // Columns
 const columns: DataTableColumns<Role> = [
@@ -49,16 +60,14 @@ const columns: DataTableColumns<Role> = [
     title: '状态',
     key: 'is_active',
     width: 100,
-    filter: true,
-    filterOptions: [
-      { label: '启用', value: true as unknown as string },
-      { label: '停用', value: false as unknown as string },
-    ],
     render(row) {
       return h(
-        NTag,
-        { type: row.is_active ? 'success' : 'error', bordered: false },
-        { default: () => (row.is_active ? '启用' : '停用') },
+        NSwitch,
+        {
+          value: row.is_active,
+          onUpdateValue: (value) => handleStatusChange(row, value),
+        },
+        { checked: () => '启用', unchecked: () => '停用' },
       )
     },
   },
@@ -75,6 +84,19 @@ const columns: DataTableColumns<Role> = [
     width: 180,
     sorter: 'default',
     render: (row) => formatDateTime(row.updated_at),
+  },
+]
+
+// Search Filters
+const searchFilters: FilterConfig[] = [
+  {
+    key: 'is_active',
+    placeholder: '状态',
+    options: [
+      { label: '启用', value: true },
+      { label: '停用', value: false },
+    ],
+    width: 100,
   },
 ]
 
@@ -320,6 +342,7 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: Role
       :request="loadData"
       :row-key="(row: Role) => row.id"
       search-placeholder="搜索角色名称/角色标识/描述"
+      :search-filters="searchFilters"
       :context-menu-options="contextMenuOptions"
       @add="handleCreate"
       @batch-delete="handleBatchDelete"

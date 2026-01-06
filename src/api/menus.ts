@@ -10,9 +10,10 @@ export interface Menu {
   component: string | null // component path
   icon: string | null
   sort: number
-  type: 'catalog' | 'menu' | 'button'
+  type: 'CATALOG' | 'MENU' | 'PERMISSION'
   permission: string | null
   is_hidden: boolean
+  is_active: boolean
   created_at: string
   children?: Menu[]
 }
@@ -25,9 +26,10 @@ export interface MenuCreate {
   component?: string | null
   icon?: string | null
   sort?: number
-  type: 'catalog' | 'menu' | 'button'
+  type: 'CATALOG' | 'MENU' | 'PERMISSION'
   permission?: string | null
   is_hidden?: boolean
+  is_active?: boolean
 }
 
 export type MenuUpdate = Partial<MenuCreate>

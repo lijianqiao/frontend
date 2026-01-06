@@ -24,7 +24,7 @@ import {
   type User,
 } from '@/api/users'
 import { formatDateTime } from '@/utils/date'
-import ProTable from '@/components/common/ProTable.vue'
+import ProTable, { type FilterConfig } from '@/components/common/ProTable.vue'
 
 defineOptions({
   name: 'UserManagement',
@@ -39,9 +39,15 @@ const tableRef = ref()
 const recycleBinTableRef = ref()
 
 const handleStatusChange = async (row: User, value: boolean) => {
-  // TODO: Add API for status update
-  row.is_active = value
-  message.success('状态更新成功 (模拟)')
+  const originalValue = row.is_active
+  try {
+    row.is_active = value // Optimistic update
+    await updateUser(row.id, { is_active: value })
+    message.success(`${value ? '启用' : '停用'}成功`)
+  } catch (error) {
+    row.is_active = originalValue // Revert on error
+    console.error(error)
+  }
 }
 
 // Columns Definition
@@ -57,12 +63,6 @@ const columns: DataTableColumns<User> = [
     title: '状态',
     key: 'is_active',
     width: 100,
-    filter: true,
-    filterOptionValue: null,
-    filterOptions: [
-      { label: '启用', value: true as unknown as string },
-      { label: '停用', value: false as unknown as string },
-    ],
     render(row) {
       return h(
         NSwitch,
@@ -102,10 +102,33 @@ const columns: DataTableColumns<User> = [
   },
 ]
 
+// Search Filters
+const searchFilters: FilterConfig[] = [
+  {
+    key: 'is_active',
+    placeholder: '状态',
+    options: [
+      { label: '启用', value: true },
+      { label: '停用', value: false },
+    ],
+    width: 100,
+  },
+  {
+    key: 'is_superuser',
+    placeholder: '超级管理员',
+    options: [
+      { label: '全部', value: null },
+      { label: '是', value: true },
+      { label: '否', value: false },
+    ],
+    width: 120,
+  },
+]
+
 // Data Request Function for ProTable
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const loadData = async (params: any) => {
-  // Params includes: page, page_size, keyword
+  // Params includes: page, page_size, keyword, + filters (gender, is_active, etc)
   const res = await getUsers(params)
   return {
     data: res.data.items,
@@ -342,7 +365,8 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: User
       :request="loadData"
       :row-key="(row: User) => row.id"
       :context-menu-options="contextMenuOptions"
-      search-placeholder="搜索用户名/昵称/邮箱/手机号"
+      search-placeholder="搜索用户名/昵称/邮箱/手机号/性别"
+      :search-filters="searchFilters"
       @add="handleCreate"
       @batch-delete="handleBatchDelete"
       @context-menu-select="handleContextMenuSelect"

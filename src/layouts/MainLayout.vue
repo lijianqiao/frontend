@@ -34,7 +34,11 @@ function renderIcon(iconName: string | null) {
 function transformMenuToOption(menu: Menu): MenuOption {
   // If type is not explicitly returned, infer from children presence.
   const hasChildren = menu.children && menu.children.length > 0
-  const isLeaf = menu.type === 'menu' || (!hasChildren && menu.type !== 'catalog')
+  const normalizedType = menu.type ? menu.type.toUpperCase() : 'MENU'
+
+  // It is a leaf (link) if it has NO children AND it is NOT a catalog.
+  // If it has children, it is a Submenu (group) and should not be a link.
+  const isLeaf = !hasChildren && normalizedType !== 'CATALOG'
   const routeName = menu.name
 
   const label = isLeaf

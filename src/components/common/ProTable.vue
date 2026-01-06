@@ -6,6 +6,7 @@ import {
   NSpace,
   NButton,
   NInput,
+  NSelect,
   NIcon,
   NDropdown,
   type DataTableColumns,
@@ -20,6 +21,17 @@ import {
   DownloadOutline as DownloadIcon,
 } from '@vicons/ionicons5'
 
+// Export this for use in other components
+export interface FilterConfig {
+  key: string
+  label?: string
+  placeholder?: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  options: { label: string; value: any }[]
+  multiple?: boolean
+  width?: number
+}
+
 // Define props with defaults
 const props = withDefaults(
   defineProps<{
@@ -32,6 +44,7 @@ const props = withDefaults(
     title?: string
     loading?: boolean
     searchPlaceholder?: string
+    searchFilters?: FilterConfig[]
     contextMenuOptions?: DropdownOption[]
     scrollX?: number
     showAdd?: boolean
@@ -42,6 +55,7 @@ const props = withDefaults(
     scrollX: 1000,
     title: '',
     searchPlaceholder: '请输入关键字搜索...',
+    searchFilters: () => [],
     loading: false,
     contextMenuOptions: () => [],
     showAdd: false,
@@ -67,6 +81,15 @@ const data = ref<any[]>([])
 const checkedRowKeys = ref<Array<string | number>>([])
 const keyword = ref('')
 
+// External Filters State (NSelects)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const filterState = ref<Record<string, any>>({})
+
+const handleFilterStateChange = () => {
+  // If we want auto-search on select change, uncomment next line:
+  // handleSearchClick()
+}
+
 const pagination = reactive<PaginationProps>({
   page: 1,
   pageSize: 10,
@@ -85,24 +108,85 @@ const pagination = reactive<PaginationProps>({
   },
 })
 
-// Filters State
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const controlledColumns = ref<any[]>([])
+
+// Initialize columns
+onMounted(() => {
+  controlledColumns.value = [...props.columns]
+  handleSearch()
+})
+
+// Watch for column prop changes
+import { watch } from 'vue'
+watch(
+  () => props.columns,
+  (newVal) => {
+    controlledColumns.value = [...newVal]
+  },
+  { deep: true },
+)
+
+// Filters State (Internal Column Filters - kept for compatibility but effectively replaced by external)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const filters = ref<Record<string, any>>({})
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const handleFiltersChange = (newFilters: Record<string, any>) => {
+const handleFiltersChange = (newFilters: Record<string, any>, sourceColumn: any) => {
+  // 1. Update Controlled Columns State (UI)
+  const columnKey = sourceColumn.key
+  const columnIndex = controlledColumns.value.findIndex((col) => col.key === columnKey)
+  if (columnIndex !== -1) {
+    const filterVal = newFilters[sourceColumn.key]
+    if (sourceColumn.filterMultiple) {
+      controlledColumns.value[columnIndex].filterOptionValues = filterVal || []
+    } else {
+      controlledColumns.value[columnIndex].filterOptionValue = filterVal
+    }
+  }
+
+  // 2. Format Filters for API
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const formattedFilters: Record<string, any> = {}
   Object.keys(newFilters).forEach((key) => {
     const val = newFilters[key]
     if (Array.isArray(val)) {
-      if (val.length > 0) formattedFilters[key] = val[0]
+      if (sourceColumn.key === key && !sourceColumn.filterMultiple) {
+        // Special case: Naive UI passes array even for single filter in newFilters map sometimes?
+        // Actually newFilters[key] matches the filterOptionValue(s) structure?
+        // Documentation says: filters is a dictionary.
+        // If multiple, val is array. If single, val is value (or array? standard NDataTable usually uses array for filter state internally but let's check).
+        // Wait, the user example: `addressColumn.filterOptionValue = filters[sourceColumn.key] as string`
+        // So `filters[key]` is indeed the value (string or array).
+        if (val.length > 0) formattedFilters[key] = val[0]
+      } else {
+        if (val.length > 0) formattedFilters[key] = val
+      }
     } else if (val !== null && val !== undefined) {
       formattedFilters[key] = val
     }
   })
 
+  // Correction: ProTable usually needs flat params for backend if it's single select.
+  // My previous logic:
+  // if (Array.isArray(val)) { if (val.length > 0) formattedFilters[key] = val[0] }
+  // This was assuming EVERYTHING comes as array.
+  // Standardize:
+  Object.keys(newFilters).forEach((key) => {
+    const val = newFilters[key]
+    const col = controlledColumns.value.find((c) => c.key === key)
+    if (col && !col.filterMultiple && Array.isArray(val)) {
+      // If single select but got array (Naive UI default behavior for filters is often array unless controlled properly?), take first.
+      // Actually in controlled mode, newFilters[key] IS the value we return.
+      formattedFilters[key] = val && val.length ? val[0] : null
+    } else {
+      formattedFilters[key] = val
+    }
+  })
+
+  // Filters state update
   filters.value = formattedFilters
+
   pagination.page = 1
   handleSearch()
 }
@@ -144,12 +228,22 @@ const clickOutside = () => {
 const handleSearch = async () => {
   tableLoading.value = true
   try {
-    const res = await props.request({
+    // 1. Prepare base params
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const params: Record<string, any> = {
       page: pagination.page,
       page_size: pagination.pageSize,
-      keyword: keyword.value,
-      ...filters.value,
-    })
+      ...filters.value, // Internal column filters
+      ...filterState.value, // External select filters
+    }
+
+    // 2. Add keyword only if present and non-empty
+    const kw = keyword.value.trim()
+    if (kw) {
+      params.keyword = kw
+    }
+
+    const res = await props.request(params)
 
     data.value = res.data
     pagination.itemCount = res.total
@@ -171,6 +265,8 @@ const handleSearchClick = () => {
 
 const handleResetClick = () => {
   keyword.value = ''
+  // Reset external filters
+  filterState.value = {}
   emit('reset')
   pagination.page = 1
   handleSearch()
@@ -234,6 +330,7 @@ onMounted(() => {
     <!-- Search Form Area -->
     <n-card class="search-card" :bordered="false" size="small">
       <div class="search-bar">
+        <!-- Keyword Search -->
         <n-input
           v-model:value="keyword"
           :placeholder="searchPlaceholder || '请输入关键字搜索...'"
@@ -245,6 +342,20 @@ onMounted(() => {
             <n-icon><SearchIcon /></n-icon>
           </template>
         </n-input>
+
+        <!-- Dynamic Filters -->
+        <template v-for="filter in searchFilters" :key="filter.key">
+          <n-select
+            v-model:value="filterState[filter.key]"
+            :placeholder="filter.placeholder || filter.label"
+            :options="filter.options"
+            :multiple="filter.multiple"
+            :style="{ width: (filter.width || 120) + 'px' }"
+            clearable
+            @update:value="handleFilterStateChange"
+          />
+        </template>
+
         <n-space>
           <n-button type="primary" @click="handleSearchClick">搜索</n-button>
           <n-button @click="handleResetClick">重置</n-button>
@@ -310,7 +421,7 @@ onMounted(() => {
       <n-data-table
         :remote="true"
         :loading="loading || tableLoading"
-        :columns="columns"
+        :columns="controlledColumns"
         :data="data"
         :pagination="pagination"
         :row-key="rowKey"

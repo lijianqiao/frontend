@@ -10,7 +10,7 @@ import {
   type DropdownOption,
 } from 'naive-ui'
 import { getOperationLogs, type OperationLog } from '@/api/logs'
-import ProTable from '@/components/common/ProTable.vue'
+import ProTable, { type FilterConfig } from '@/components/common/ProTable.vue'
 import { formatDateTime } from '@/utils/date'
 
 defineOptions({
@@ -47,28 +47,12 @@ const columns: DataTableColumns<OperationLog> = [
     title: '模块',
     key: 'module',
     width: 120,
-    filterMultiple: false,
-    filterOptions: [
-      { label: '用户管理', value: 'users' },
-      { label: '角色管理', value: 'roles' },
-      { label: '菜单管理', value: 'menus' },
-      { label: '认证模块', value: 'auth' },
-      { label: '日志模块', value: 'logs' },
-    ],
   },
   { title: '内容', key: 'summary', ellipsis: { tooltip: true } },
   {
     title: '方法',
     key: 'method',
     width: 100,
-    filterMultiple: false,
-    filterOptions: [
-      { label: 'GET', value: 'GET' },
-      { label: 'POST', value: 'POST' },
-      { label: 'PUT', value: 'PUT' },
-      { label: 'DELETE', value: 'DELETE' },
-      { label: 'PATCH', value: 'PATCH' },
-    ],
     render(row) {
       let type: 'default' | 'info' | 'success' | 'warning' | 'error' = 'default'
       switch (row.method) {
@@ -93,17 +77,6 @@ const columns: DataTableColumns<OperationLog> = [
     title: '状态码',
     key: 'response_code',
     width: 100,
-    filterMultiple: false,
-    filterOptions: [
-      { label: '200 OK', value: 200 },
-      { label: '201 Created', value: 201 },
-      { label: '400 Bad Request', value: 400 },
-      { label: '401 Unauthorized', value: 401 },
-      { label: '403 Forbidden', value: 403 },
-      { label: '404 Not Found', value: 404 },
-      { label: '422 Unprocessable', value: 422 },
-      { label: '500 Server Error', value: 500 },
-    ],
     render(row) {
       return h(
         NTag,
@@ -129,21 +102,19 @@ const columns: DataTableColumns<OperationLog> = [
   },
 ]
 
+// Search Filters
+const searchFilters: FilterConfig[] = []
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const loadData = async (params: any) => {
   // ProTable passes flattened params
-  const { page, page_size, keyword, module, method, response_code, sort } = params
 
-  const filterParams: Record<string, unknown> = {}
-  if (module) filterParams.module = module
-  if (method) filterParams.method = method
-  if (response_code) filterParams.response_code = response_code
+  const { page, page_size, keyword, sort } = params
 
   const res = await getOperationLogs({
     page,
     page_size,
     keyword,
-    ...filterParams,
     sort,
   })
   return {
@@ -165,6 +136,7 @@ const handleReset = () => {}
       :row-key="(row) => row.id"
       :context-menu-options="contextMenuOptions"
       search-placeholder="搜索操作人/IP/模块/操作内容/请求方法/路径"
+      :search-filters="searchFilters"
       @context-menu-select="handleContextMenuSelect"
       @reset="handleReset"
     />

@@ -13,10 +13,13 @@ import {
   NInputNumber,
   NSelect,
   NTreeSelect,
+  NGrid,
+  NFormItemGridItem,
   type DropdownOption,
 } from 'naive-ui'
 import {
   getMenus,
+  getMenuOptions,
   createMenu,
   updateMenu,
   deleteMenu,
@@ -26,7 +29,7 @@ import {
   type Menu,
 } from '@/api/menus'
 import { formatDateTime } from '@/utils/date'
-import ProTable from '@/components/common/ProTable.vue'
+import ProTable, { type FilterConfig } from '@/components/common/ProTable.vue'
 
 defineOptions({
   name: 'MenuManagement',
@@ -40,25 +43,76 @@ const recycleBinTableRef = ref()
 // Data source for TreeSelect (flattened or tree)
 const menuOptions = ref<Menu[]>([])
 
+const handleStatusChange = async (row: Menu, value: boolean) => {
+  const originalValue = row.is_active
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(row as any).is_active = value
+    await updateMenu(row.id, { is_active: value })
+    message.success(`${value ? '启用' : '停用'}成功`)
+  } catch (error) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(row as any).is_active = originalValue
+    console.error(error)
+  }
+}
+
 const columns: DataTableColumns<Menu> = [
   { title: '标题', key: 'title', width: 200, fixed: 'left', ellipsis: { tooltip: true } },
   { title: '名称', key: 'name', width: 150, ellipsis: { tooltip: true } },
-  { title: '类型', key: 'type', width: 80, render: (row) => row.type }, // Simplified render or keep tag. I'll keep tag logic below but inline it or simplify. Let's keep the detailed render for Type.
-  // Actually, I'll rewrite the whole block to be safe.
+  {
+    title: '类型',
+    key: 'type',
+    width: 80,
+    render(row) {
+      const typeMap: Record<string, string> = {
+        CATALOG: '目录',
+        MENU: '菜单',
+        PERMISSION: '权限点',
+      }
+      return h(
+        NTag,
+        {
+          type: row.type === 'CATALOG' ? 'info' : row.type === 'MENU' ? 'success' : 'warning',
+          bordered: false,
+        },
+        { default: () => typeMap[row.type] || row.type },
+      )
+    },
+  },
   { title: '图标', key: 'icon', width: 150, render: (row) => row.icon || '-' },
   { title: '路径', key: 'path', width: 200, ellipsis: { tooltip: true } },
   { title: '组件', key: 'component', width: 200, ellipsis: { tooltip: true } },
   { title: '权限', key: 'permission', width: 150, ellipsis: { tooltip: true } },
   { title: '排序', key: 'sort', width: 80, sorter: 'default' },
   {
+    title: '状态',
+    key: 'is_active',
+    width: 100,
+    render(row) {
+      // API response might not have is_active on Menu type yet if not updated, but API doc says yes.
+      // Casting row to any to avoid TS error if Menu interface isn't updated yet.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const isActive = (row as any).is_active
+      return h(
+        NSwitch,
+        {
+          value: isActive,
+          onUpdateValue: (value) => handleStatusChange(row, value),
+        },
+        { checked: () => '启用', unchecked: () => '停用' },
+      )
+    },
+  },
+  {
     title: '隐藏',
     key: 'is_hidden',
-    width: 80,
+    width: 100,
     render(row) {
       return h(
         NTag,
         { type: row.is_hidden ? 'warning' : 'success', bordered: false },
-        { default: () => (row.is_hidden ? '是' : '否') },
+        { default: () => (row.is_hidden ? '隐藏' : '显示') },
       )
     },
   },
@@ -68,6 +122,38 @@ const columns: DataTableColumns<Menu> = [
     width: 180,
     sorter: 'default',
     render: (row) => formatDateTime(row.created_at),
+  },
+]
+
+// Search Filters
+const searchFilters: FilterConfig[] = [
+  {
+    key: 'is_hidden',
+    placeholder: '隐藏',
+    options: [
+      { label: '显示', value: false },
+      { label: '隐藏', value: true },
+    ],
+    width: 100,
+  },
+  {
+    key: 'is_active',
+    placeholder: '状态',
+    options: [
+      { label: '启用', value: true },
+      { label: '停用', value: false },
+    ],
+    width: 100,
+  },
+  {
+    key: 'type',
+    placeholder: '类型',
+    options: [
+      { label: '目录', value: 'CATALOG' },
+      { label: '菜单', value: 'MENU' },
+      { label: '权限点', value: 'PERMISSION' },
+    ],
+    width: 100,
   },
 ]
 
@@ -83,13 +169,7 @@ const loadData = async (params: any) => {
   const items = data.items || []
   const total = data.total || 0
 
-  // Update store or local state if this logic is used for TreeSelect elsewhere
-  // But here we just return for the table.
-  // Note: If keyword is present, the backend might return a flat list or filtered tree.
-  // We assume the backend handles the structure.
   if (!params.keyword) {
-    // Only update the tree select options when loading the full list (no keyword)
-    // or we could just always update it if the format is compatible.
     menuOptions.value = items
   }
 
@@ -121,11 +201,12 @@ const model = ref({
   name: '',
   path: '',
   component: '' as string | null,
-  type: 'menu' as 'catalog' | 'menu' | 'button',
+  type: 'MENU' as 'CATALOG' | 'MENU' | 'PERMISSION',
   icon: '' as string | null,
   sort: 0,
   permission: '' as string | null,
   is_hidden: false,
+  is_active: true,
 })
 
 const rules = {
@@ -134,7 +215,16 @@ const rules = {
   type: { required: true, message: '请选择类型', trigger: 'blur' },
 }
 
-const handleCreate = () => {
+const fetchMenuOptions = async () => {
+  try {
+    const res = await getMenuOptions()
+    menuOptions.value = res.data
+  } catch (error) {
+    console.error('Failed to load menu options:', error)
+  }
+}
+
+const handleCreate = async () => {
   modalType.value = 'create'
   model.value = {
     id: '',
@@ -143,17 +233,21 @@ const handleCreate = () => {
     name: '',
     path: '',
     component: '',
-    type: 'menu',
+    type: 'MENU',
     icon: '',
     sort: 0,
     permission: '',
     is_hidden: false,
+    is_active: true,
   }
   showModal.value = true
+  await fetchMenuOptions()
 }
 
-const handleEdit = (row: Menu) => {
+const handleEdit = async (row: Menu) => {
   modalType.value = 'edit'
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const isActive = (row as any).is_active !== undefined ? (row as any).is_active : true
   model.value = {
     id: row.id,
     parent_id: row.parent_id,
@@ -166,8 +260,10 @@ const handleEdit = (row: Menu) => {
     sort: row.sort,
     permission: row.permission || '',
     is_hidden: row.is_hidden,
+    is_active: isActive,
   }
   showModal.value = true
+  await fetchMenuOptions()
 }
 
 const handleSubmit = (e: MouseEvent) => {
@@ -279,6 +375,7 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: Menu
       :request="loadData"
       :row-key="(row: Menu) => row.id"
       search-placeholder="搜索标题/名称/路径/权限标识"
+      :search-filters="searchFilters"
       default-expand-all
       :context-menu-options="contextMenuOptions"
       @add="handleCreate"
@@ -325,17 +422,21 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: Menu
             :options="menuOptions"
             key-field="id"
             label-field="title"
+            children-field="children"
             placeholder="请选择上级菜单"
             clearable
+            filterable
+            show-line
+            check-strategy="all"
           />
         </n-form-item>
         <n-form-item label="菜单类型" path="type">
           <n-select
             v-model:value="model.type"
             :options="[
-              { label: '目录', value: 'catalog' },
-              { label: '菜单', value: 'menu' },
-              { label: '按钮', value: 'button' },
+              { label: '目录', value: 'CATALOG' },
+              { label: '菜单', value: 'MENU' },
+              { label: '权限点', value: 'PERMISSION' },
             ]"
           />
         </n-form-item>
@@ -348,13 +449,13 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: Menu
         <n-form-item label="路径 (Path)" path="path">
           <n-input v-model:value="model.path" placeholder="路由路径, 如: /menus" />
         </n-form-item>
-        <n-form-item label="组件路径" path="component" v-if="model.type !== 'button'">
+        <n-form-item label="组件路径" path="component" v-if="model.type !== 'PERMISSION'">
           <n-input
             v-model:value="model.component"
             placeholder="组件路径, 如: /views/menus/index.vue"
           />
         </n-form-item>
-        <n-form-item label="权限标识" path="permission" v-if="model.type !== 'catalog'">
+        <n-form-item label="权限标识" path="permission" v-if="model.type !== 'CATALOG'">
           <n-input v-model:value="model.permission" placeholder="如: sys:menu:list" />
         </n-form-item>
         <n-form-item label="排序" path="sort">
@@ -363,9 +464,15 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: Menu
         <n-form-item label="图标" path="icon">
           <n-input v-model:value="model.icon" />
         </n-form-item>
-        <n-form-item label="隐藏" path="is_hidden">
-          <n-switch v-model:value="model.is_hidden" />
-        </n-form-item>
+
+        <n-grid :cols="2" :x-gap="24">
+          <n-form-item-grid-item label="隐藏" path="is_hidden">
+            <n-switch v-model:value="model.is_hidden" />
+          </n-form-item-grid-item>
+          <n-form-item-grid-item label="状态" path="is_active">
+            <n-switch v-model:value="model.is_active" />
+          </n-form-item-grid-item>
+        </n-grid>
       </n-form>
       <template #action>
         <n-button @click="showModal = false">取消</n-button>

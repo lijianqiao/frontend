@@ -3,6 +3,7 @@ import { ref, h } from 'vue'
 import {
   type DataTableColumns,
   NTag,
+  // NTag, // NTag moved to a separate import
   NDrawer,
   NDrawerContent,
   NDescriptions,
@@ -10,7 +11,7 @@ import {
   type DropdownOption,
 } from 'naive-ui'
 import { getLoginLogs, type LoginLog } from '@/api/logs'
-import ProTable from '@/components/common/ProTable.vue'
+import ProTable, { type FilterConfig } from '@/components/common/ProTable.vue'
 import { formatDateTime } from '@/utils/date'
 
 defineOptions({
@@ -49,27 +50,12 @@ const columns: DataTableColumns<LoginLog> = [
     title: '操作系统',
     key: 'os',
     width: 120,
-    filterMultiple: false,
-    filterOptions: [
-      { label: 'Windows 10', value: 'Windows 10' },
-      { label: 'Windows 11', value: 'Windows 11' },
-      { label: 'Mac OS', value: 'Mac OS' },
-      { label: 'Linux', value: 'Linux' },
-      { label: 'Android', value: 'Android' },
-      { label: 'iOS', value: 'iOS' },
-      { label: 'Other', value: 'Other' },
-    ],
   },
   { title: '设备', key: 'device', width: 100 },
   {
     title: '状态',
     key: 'status',
     width: 80,
-    filterMultiple: false,
-    filterOptions: [
-      { label: '成功', value: 1 },
-      { label: '失败', value: 0 },
-    ],
     render(row) {
       return h(
         NTag,
@@ -88,22 +74,19 @@ const columns: DataTableColumns<LoginLog> = [
   },
 ]
 
+// Search Filters
+const searchFilters: FilterConfig[] = []
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const loadData = async (params: any) => {
   // ProTable passes keyword and flattened filters directly in params
-  const { page, page_size, keyword, os, status, sort } = params
 
-  const filterParams: Record<string, unknown> = {}
-  if (os) filterParams.os = os
-  if (status !== undefined && status !== null) {
-    filterParams.status = status === 1
-  }
+  const { page, page_size, keyword, sort } = params
 
   const res = await getLoginLogs({
     page,
     page_size,
     keyword, // Use keyword from ProTable
-    ...filterParams,
     sort,
   })
   return {
@@ -127,6 +110,7 @@ const handleReset = () => {
       :row-key="(row) => row.id"
       :context-menu-options="contextMenuOptions"
       search-placeholder="搜索用户名/IP/提示信息/浏览器/操作系统/设备"
+      :search-filters="searchFilters"
       @context-menu-select="handleContextMenuSelect"
       @reset="handleReset"
     />
