@@ -33,7 +33,13 @@ export const useUserStore = defineStore('user', () => {
   async function fetchUserInfo() {
     try {
       const res = await getUserInfo()
-      userInfo.value = res.data as unknown as Record<string, unknown>
+      const data = res.data as unknown as Record<string, unknown>
+      userInfo.value = data
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((data as any).permissions) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        permissions.value = (data as any).permissions
+      }
       return res.data
     } catch (error) {
       clearToken()

@@ -15,6 +15,7 @@ export interface Menu {
   is_hidden: boolean
   is_active: boolean
   created_at: string
+  updated_at?: string | null
   children?: Menu[]
 }
 
@@ -34,8 +35,16 @@ export interface MenuCreate {
 
 export type MenuUpdate = Partial<MenuCreate>
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getMenus(params?: any) {
+export interface MenuSearchParams {
+  page?: number
+  page_size?: number
+  keyword?: string
+  is_active?: boolean
+  is_hidden?: boolean
+  type?: 'CATALOG' | 'MENU' | 'PERMISSION'
+}
+
+export function getMenus(params?: MenuSearchParams) {
   return request<ResponseBase<PaginatedResponse<Menu>>>({
     url: '/menus/',
     method: 'get',
@@ -43,8 +52,7 @@ export function getMenus(params?: any) {
   })
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getRecycleBinMenus(params?: any) {
+export function getRecycleBinMenus(params?: MenuSearchParams) {
   return request<ResponseBase<PaginatedResponse<Menu>>>({
     url: '/menus/recycle-bin',
     method: 'get',
@@ -99,7 +107,6 @@ export function getMyMenus() {
 }
 
 // 角色分配权限用的菜单树选项
-
 export function getMenuOptions() {
   return request<ResponseBase<Menu[]>>({
     url: '/menus/options',

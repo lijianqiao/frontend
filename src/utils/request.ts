@@ -1,6 +1,7 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios'
 import { createDiscreteApi } from 'naive-ui'
 import type { ResponseBase } from '@/types/api'
+import router from '@/router'
 
 const { message } = createDiscreteApi(['message'])
 
@@ -32,8 +33,7 @@ service.interceptors.response.use(
     const res = response.data
     // Assuming 200 is success
     if (response.status === 200) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return res as any
+      return res as unknown as AxiosResponse
     }
     message.error(res.message || '请求错误')
     return Promise.reject(new Error(res.message || '请求错误'))
@@ -83,7 +83,7 @@ service.interceptors.response.use(
         console.error('RefreshToken Failed:', refreshErr)
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
-        window.location.href = '/login'
+        router.push({ name: 'Login', query: { redirect: router.currentRoute.value.fullPath } })
         return Promise.reject(refreshErr)
       } finally {
         isRefreshing = false

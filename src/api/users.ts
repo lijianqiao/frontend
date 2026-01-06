@@ -12,6 +12,8 @@ export interface User {
   is_superuser: boolean
   created_at: string
   updated_at: string | null
+  permissions?: string[]
+  roles?: string[] // Role codes or names
 }
 
 export interface UserCreate {
@@ -27,8 +29,15 @@ export interface UserCreate {
 
 export type UserUpdate = Partial<UserCreate>
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getUsers(params?: any) {
+export interface UserSearchParams {
+  page?: number
+  page_size?: number
+  keyword?: string
+  is_active?: boolean
+  is_superuser?: boolean
+}
+
+export function getUsers(params?: UserSearchParams) {
   return request<ResponseBase<PaginatedResponse<User>>>({
     url: '/users/',
     method: 'get',
@@ -60,8 +69,7 @@ export function batchDeleteUsers(ids: string[], hard_delete: boolean = false) {
   })
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getRecycleBinUsers(params?: any) {
+export function getRecycleBinUsers(params?: UserSearchParams) {
   return request<ResponseBase<PaginatedResponse<User>>>({
     url: '/users/recycle-bin',
     method: 'get',

@@ -10,7 +10,7 @@ import {
   NDescriptionsItem,
   type DropdownOption,
 } from 'naive-ui'
-import { getLoginLogs, type LoginLog } from '@/api/logs'
+import { getLoginLogs, type LoginLog, type LogSearchParams } from '@/api/logs'
 import ProTable, { type FilterConfig } from '@/components/common/ProTable.vue'
 import { formatDateTime } from '@/utils/date'
 
@@ -77,8 +77,7 @@ const columns: DataTableColumns<LoginLog> = [
 // Search Filters
 const searchFilters: FilterConfig[] = []
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const loadData = async (params: any) => {
+const loadData = async (params: LogSearchParams) => {
   // ProTable passes keyword and flattened filters directly in params
 
   const { page, page_size, keyword, sort } = params
@@ -159,5 +158,6 @@ const handleReset = () => {
 <style scoped>
 .p-4 {
   padding: 16px;
+  height: 100%;
 }
 </style>

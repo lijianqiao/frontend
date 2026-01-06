@@ -22,6 +22,7 @@ import {
   getRecycleBinUsers,
   restoreUser,
   type User,
+  type UserSearchParams,
 } from '@/api/users'
 import { formatDateTime } from '@/utils/date'
 import ProTable, { type FilterConfig } from '@/components/common/ProTable.vue'
@@ -126,8 +127,7 @@ const searchFilters: FilterConfig[] = [
 ]
 
 // Data Request Function for ProTable
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const loadData = async (params: any) => {
+const loadData = async (params: UserSearchParams) => {
   // Params includes: page, page_size, keyword, + filters (gender, is_active, etc)
   const res = await getUsers(params)
   return {
@@ -188,8 +188,11 @@ const createRules = computed(() => {
     phone: { required: true, message: '请输入手机号', trigger: 'blur' },
   }
   if (modalType.value === 'create') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(rules as any).password = { required: true, message: '请输入密码', trigger: 'blur' }
+    ;(rules as Record<string, unknown>).password = {
+      required: true,
+      message: '请输入密码',
+      trigger: 'blur',
+    }
   }
   return rules
 })
@@ -304,11 +307,9 @@ const showRecycleBin = ref(false)
 const handleRecycleBin = () => {
   showRecycleBin.value = true
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const recycleBinRequest = async (params: any) => {
+const recycleBinRequest = async (params: UserSearchParams) => {
   const res = await getRecycleBinUsers(params)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const data = res.data as any
+  const data = res.data
   return {
     data: data.items,
     total: data.total,

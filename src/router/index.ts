@@ -131,7 +131,7 @@ router.beforeEach(async (to, from, next) => {
       userStore.permissions.includes('*:*:*')
     if (!hasPerm) {
       message.warning('无权访问')
-      next(false)
+      next({ name: 'Forbidden' })
       loadingBar.error()
       return
     }

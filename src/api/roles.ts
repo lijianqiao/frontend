@@ -7,21 +7,31 @@ export interface Role {
   code: string
   description: string | null
   is_active: boolean
+  sort: number
   created_at: string
-  updated_at: string
+  updated_at: string | null
+  menu_ids?: string[]
 }
 
 export interface RoleCreate {
   name: string
   code: string
   description?: string
+  sort?: number
   is_active?: boolean
+  menu_ids?: string[]
 }
 
 export type RoleUpdate = Partial<RoleCreate>
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getRoles(params?: any) {
+export interface RoleSearchParams {
+  page?: number
+  page_size?: number
+  keyword?: string
+  is_active?: boolean
+}
+
+export function getRoles(params?: RoleSearchParams) {
   return request<ResponseBase<PaginatedResponse<Role>>>({
     url: '/roles/',
     method: 'get',
@@ -60,9 +70,10 @@ export function batchDeleteRoles(ids: string[], hard_delete: boolean = false) {
   })
 }
 
-// Permission related APIs (placeholder for now)
+// Permission related APIs
 export function getRoleMenus(roleId: string) {
-  return request<ResponseBase<unknown>>({
+  // Returns list of menu IDs
+  return request<ResponseBase<string[] | { menu_ids: string[] }>>({
     url: `/roles/${roleId}/menus`,
     method: 'get',
   })
@@ -76,8 +87,7 @@ export function updateRoleMenus(roleId: string, menuIds: string[]) {
   })
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getRecycleBinRoles(params?: any) {
+export function getRecycleBinRoles(params?: RoleSearchParams) {
   return request<ResponseBase<PaginatedResponse<Role>>>({
     url: '/roles/recycle-bin',
     method: 'get',

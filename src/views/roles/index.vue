@@ -24,6 +24,7 @@ import {
   getRecycleBinRoles,
   restoreRole,
   type Role,
+  type RoleSearchParams,
 } from '@/api/roles'
 import { formatDateTime } from '@/utils/date'
 import { getMenus, type Menu } from '@/api/menus'
@@ -101,8 +102,7 @@ const searchFilters: FilterConfig[] = [
 ]
 
 // Load Data
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const loadData = async (params: any) => {
+const loadData = async (params: RoleSearchParams) => {
   const res = await getRoles(params)
   return {
     data: res.data.items,
@@ -250,13 +250,12 @@ const handlePermissions = async (row: Role) => {
     const menuItems = menuData.items || []
     permTreeData.value = mapMenusToOptions(menuItems)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const roleData = roleMenusRes.data as any
+    const roleData = roleMenusRes.data
     if (Array.isArray(roleData)) {
+      checkedKeys.value = roleData
+    } else if (roleData && typeof roleData === 'object' && 'menu_ids' in roleData) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      checkedKeys.value = roleData.map((item: any) => (typeof item === 'string' ? item : item.id))
-    } else if (roleData.menu_ids) {
-      checkedKeys.value = roleData.menu_ids
+      checkedKeys.value = (roleData as any).menu_ids
     } else {
       checkedKeys.value = []
     }
@@ -286,11 +285,9 @@ const showRecycleBin = ref(false)
 const handleRecycleBin = () => {
   showRecycleBin.value = true
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const recycleBinRequest = async (params: any) => {
+const recycleBinRequest = async (params: RoleSearchParams) => {
   const res = await getRecycleBinRoles(params)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const data = res.data as any
+  const data = res.data
   return {
     data: data.items,
     total: data.total,

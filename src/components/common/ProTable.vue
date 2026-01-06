@@ -430,7 +430,7 @@ onMounted(() => {
         @update:filters="handleFiltersChange"
         :scroll-x="scrollX"
         flex-height
-        style="height: 600px"
+        style="height: 100%; min-height: 600px; flex: 1"
       />
 
       <!-- Context Menu -->

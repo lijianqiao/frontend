@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, h } from 'vue'
+import { ref, h, computed, onMounted } from 'vue'
 import {
   NButton,
   NFormItem,
@@ -27,7 +27,9 @@ import {
   getRecycleBinMenus,
   restoreMenu,
   type Menu,
+  type MenuSearchParams,
 } from '@/api/menus'
+import { getPermissionDict } from '@/api/permissions'
 import { formatDateTime } from '@/utils/date'
 import ProTable, { type FilterConfig } from '@/components/common/ProTable.vue'
 
@@ -42,17 +44,17 @@ const recycleBinTableRef = ref()
 
 // Data source for TreeSelect (flattened or tree)
 const menuOptions = ref<Menu[]>([])
+// Permission dictionary options
+const permissionOptions = ref<{ label: string; value: string }[]>([])
 
 const handleStatusChange = async (row: Menu, value: boolean) => {
   const originalValue = row.is_active
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(row as any).is_active = value
+    row.is_active = value
     await updateMenu(row.id, { is_active: value })
     message.success(`${value ? '启用' : '停用'}成功`)
   } catch (error) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(row as any).is_active = originalValue
+    row.is_active = originalValue
     console.error(error)
   }
 }
@@ -90,10 +92,7 @@ const columns: DataTableColumns<Menu> = [
     key: 'is_active',
     width: 100,
     render(row) {
-      // API response might not have is_active on Menu type yet if not updated, but API doc says yes.
-      // Casting row to any to avoid TS error if Menu interface isn't updated yet.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const isActive = (row as any).is_active
+      const isActive = row.is_active
       return h(
         NSwitch,
         {
@@ -158,14 +157,11 @@ const searchFilters: FilterConfig[] = [
 ]
 
 // Load Data
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const loadData = async (params: any) => {
+const loadData = async (params: MenuSearchParams) => {
   // Pass all params (page, page_size, keyword) to the API
   const res = await getMenus(params)
 
-  // Fix: API returns PaginatedResponse
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const data = res.data as any
+  const data = res.data
   const items = data.items || []
   const total = data.total || 0
 
@@ -209,11 +205,30 @@ const model = ref({
   is_active: true,
 })
 
-const rules = {
-  title: { required: true, message: '请输入标题', trigger: 'blur' },
-  name: { required: true, message: '请输入名称', trigger: 'blur' },
-  type: { required: true, message: '请选择类型', trigger: 'blur' },
-}
+const rules = computed(() => {
+  return {
+    title: { required: true, message: '请输入标题', trigger: 'blur' },
+    name: { required: true, message: '请输入名称', trigger: 'blur' },
+    type: { required: true, message: '请选择类型', trigger: 'blur' },
+    permission: {
+      required: model.value.type === 'PERMISSION',
+      message: '请选择权限标识',
+      trigger: ['blur', 'change'],
+    },
+    path: {
+      validator: (rule: unknown, value: string) => {
+        if (model.value.type === 'MENU') {
+          // If filled, must be valid path
+          if (value && !/^(\/[a-zA-Z0-9_\-]+)+$/.test(value)) {
+            return new Error('路径必须以/开头，只能包含字母数字下划线连字符')
+          }
+        }
+        return true
+      },
+      trigger: 'blur',
+    },
+  }
+})
 
 const fetchMenuOptions = async () => {
   try {
@@ -221,6 +236,18 @@ const fetchMenuOptions = async () => {
     menuOptions.value = res.data
   } catch (error) {
     console.error('Failed to load menu options:', error)
+  }
+}
+
+const fetchPermissionOptions = async () => {
+  try {
+    const res = await getPermissionDict()
+    permissionOptions.value = (res.data || []).map((item) => ({
+      label: `${item.name} (${item.code})`,
+      value: item.code,
+    }))
+  } catch (error) {
+    console.error('Failed to load permission options:', error)
   }
 }
 
@@ -276,6 +303,15 @@ const handleSubmit = (e: MouseEvent) => {
         if (data.icon === '') data.icon = null
         if (data.permission === '') data.permission = null
 
+        // Clean up fields based on type before submitting to avoid validation errors if backend is strict
+        if (data.type === 'CATALOG') {
+          data.path = ''
+          data.permission = null
+        } else if (data.type === 'PERMISSION') {
+          data.path = ''
+        }
+        // MENU can have permission or not, path or not
+
         if (modalType.value === 'create') {
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { id, ...createData } = data
@@ -317,12 +353,10 @@ const showRecycleBin = ref(false)
 const handleRecycleBin = () => {
   showRecycleBin.value = true
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const recycleBinRequest = async (params: any) => {
+const recycleBinRequest = async (params: MenuSearchParams) => {
   const res = await getRecycleBinMenus(params)
   // Recycle bin API returns PaginatedResponse
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const data = res.data as any
+  const data = res.data
   const items = data.items || []
   return {
     data: items,
@@ -364,6 +398,10 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: Menu
     })
   }
 }
+
+onMounted(() => {
+  fetchPermissionOptions()
+})
 </script>
 
 <template>
@@ -384,7 +422,7 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: Menu
       show-add
       show-recycle-bin
       show-batch-delete
-      :scroll-x="1500"
+      :scroll-x="1800"
     >
       <!-- Removed custom search slot -->
     </ProTable>
@@ -404,7 +442,7 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: Menu
         :search-placeholder="'搜索删除了的菜单...'"
         :context-menu-options="recycleBinContextMenuOptions"
         @context-menu-select="handleRecycleBinContextMenuSelect"
-        :scroll-x="1500"
+        :scroll-x="1800"
       />
     </n-modal>
 
@@ -446,18 +484,28 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: Menu
         <n-form-item label="名称 (Name)" path="name">
           <n-input v-model:value="model.name" placeholder="路由名称, 如: MenuManagement" />
         </n-form-item>
-        <n-form-item label="路径 (Path)" path="path">
-          <n-input v-model:value="model.path" placeholder="路由路径, 如: /menus" />
+
+        <n-form-item label="路径 (Path)" path="path" v-if="model.type === 'MENU'">
+          <n-input v-model:value="model.path" placeholder="/system/users" />
         </n-form-item>
-        <n-form-item label="组件路径" path="component" v-if="model.type !== 'PERMISSION'">
+
+        <n-form-item label="组件路径" path="component" v-if="model.type === 'MENU'">
           <n-input
             v-model:value="model.component"
             placeholder="组件路径, 如: /views/menus/index.vue"
           />
         </n-form-item>
+
         <n-form-item label="权限标识" path="permission" v-if="model.type !== 'CATALOG'">
-          <n-input v-model:value="model.permission" placeholder="如: sys:menu:list" />
+          <n-select
+            v-model:value="model.permission"
+            :options="permissionOptions"
+            placeholder="请选择权限标识"
+            filterable
+            clearable
+          />
         </n-form-item>
+
         <n-form-item label="排序" path="sort">
           <n-input-number v-model:value="model.sort" />
         </n-form-item>

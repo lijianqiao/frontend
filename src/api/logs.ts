@@ -29,8 +29,14 @@ export interface OperationLog {
   created_at: string
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getLoginLogs(params?: any) {
+export interface LogSearchParams {
+  page?: number
+  page_size?: number
+  keyword?: string
+  sort?: string
+}
+
+export function getLoginLogs(params?: LogSearchParams) {
   return request<ResponseBase<PaginatedResponse<LoginLog>>>({
     url: '/logs/login',
     method: 'get',
@@ -38,8 +44,7 @@ export function getLoginLogs(params?: any) {
   })
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getOperationLogs(params?: any) {
+export function getOperationLogs(params?: LogSearchParams) {
   return request<ResponseBase<PaginatedResponse<OperationLog>>>({
     url: '/logs/operation',
     method: 'get',
