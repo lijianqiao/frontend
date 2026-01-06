@@ -1,8 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { createDiscreteApi } from 'naive-ui'
+import { $alert } from '@/utils/alert' // Use Global Alert
 import { useUserStore } from '@/stores/user'
 
-const { message, loadingBar } = createDiscreteApi(['message', 'loadingBar'])
+const { loadingBar } = createDiscreteApi(['loadingBar'])
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -74,12 +75,6 @@ const router = createRouter({
       ],
     },
     {
-      path: '/403',
-      name: 'Forbidden',
-      component: () => import('@/views/error/403.vue'),
-      meta: { title: '403 Forbidden' },
-    },
-    {
       path: '/500',
       name: 'ServerError',
       component: () => import('@/views/error/500.vue'),
@@ -100,7 +95,7 @@ router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore()
 
   if (to.name !== 'Login' && !token) {
-    message.error('请先登录')
+    $alert.error('请先登录')
     next({ name: 'Login' })
     return
   }
@@ -116,6 +111,17 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
+  // Ensure permissions are populated.
+  // If userInfo didn't provide them, and we haven't extracted them from menus yet (or permissions are truly empty),
+  // we try to fetch menus to extract permissions (as per our store logic).
+  if (token && userStore.permissions.length === 0) {
+    try {
+      await userStore.fetchUserMenus()
+    } catch (error) {
+      console.error('Failed to fetch menus for permissions', error)
+    }
+  }
+
   if (to.name === 'Login' && token) {
     next({ name: 'Dashboard' })
     return
@@ -125,12 +131,14 @@ router.beforeEach(async (to, from, next) => {
     const requiredPerm = to.meta.permission as string
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const isSuperuser = (userStore.userInfo as any)?.is_superuser
+    console.log('[Router] Checking Permission:', requiredPerm, 'UserPerms:', userStore.permissions)
     const hasPerm =
       isSuperuser ||
       userStore.permissions.includes(requiredPerm) ||
-      userStore.permissions.includes('*:*:*')
+      userStore.permissions.includes('*:*:*') ||
+      userStore.hasMenu(to.name as string)
     if (!hasPerm) {
-      message.warning('无权访问')
+      $alert.warning('无权访问')
       next({ name: 'Forbidden' })
       loadingBar.error()
       return

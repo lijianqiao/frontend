@@ -882,13 +882,12 @@ ResponseBase[RoleResponse]: 创建成功的角色对象。
 
 #### Request Body (application/json)
 
-| 参数名        | 类型      | 必填 | 描述           |
-| :------------ | :-------- | :--- | :------------- |
-| `description` | `string`  | 否   | 描述           |
-| `sort`        | `integer` | 否   | 排序           |
-| `name`        | `string`  | 是   | 角色名称       |
-| `code`        | `string`  | 是   | 角色编码       |
-| `menu_ids`    | `array`   | 否   | 关联菜单ID列表 |
+| 参数名        | 类型      | 必填 | 描述     |
+| :------------ | :-------- | :--- | :------- |
+| `description` | `string`  | 否   | 描述     |
+| `sort`        | `integer` | 否   | 排序     |
+| `name`        | `string`  | 是   | 角色名称 |
+| `code`        | `string`  | 是   | 角色编码 |
 
 #### Responses
 
@@ -990,14 +989,13 @@ ResponseBase[RoleResponse]: 更新后的角色对象。
 
 #### Request Body (application/json)
 
-| 参数名        | 类型      | 必填 | 描述           |
-| :------------ | :-------- | :--- | :------------- |
-| `name`        | `string`  | 否   | 角色名称       |
-| `code`        | `string`  | 否   | 角色编码       |
-| `description` | `string`  | 否   | 描述           |
-| `sort`        | `integer` | 否   | 排序           |
-| `is_active`   | `boolean` | 否   | 是否激活       |
-| `menu_ids`    | `array`   | 否   | 关联菜单ID列表 |
+| 参数名        | 类型      | 必填 | 描述     |
+| :------------ | :-------- | :--- | :------- |
+| `name`        | `string`  | 否   | 角色名称 |
+| `code`        | `string`  | 否   | 角色编码 |
+| `description` | `string`  | 否   | 描述     |
+| `sort`        | `integer` | 否   | 排序     |
+| `is_active`   | `boolean` | 否   | 是否激活 |
 
 #### Responses
 
@@ -1171,6 +1169,88 @@ Format: `application/json`
 | `code`    | `integer`      | 否   | Code    |
 | `message` | `string`       | 否   | Message |
 | `data`    | `RoleResponse` | 否   |         |
+
+**Status Code**: `422` - Validation Error
+
+Format: `application/json`
+
+| 参数名   | 类型                     | 必填 | 描述   |
+| :------- | :----------------------- | :--- | :----- |
+| `detail` | `Array[ValidationError]` | 否   | Detail |
+
+---
+
+### 获取角色菜单
+
+**URL**: `/api/v1/roles/{id}/menus`
+
+**Method**: `GET`
+
+**Description**:
+
+获取角色已分配的菜单ID列表（用于编辑回显）。
+
+#### Requests Parameters (Query/Path)
+
+| 参数名 | 位置   | 类型     | 必填 | 描述 | Default |
+| :----- | :----- | :------- | :--- | :--- | :------ |
+| `id`   | `path` | `string` | 是   | Id   |         |
+
+#### Responses
+
+**Status Code**: `200` - Successful Response
+
+Format: `application/json`
+
+| 参数名    | 类型      | 必填 | 描述    |
+| :-------- | :-------- | :--- | :------ |
+| `code`    | `integer` | 否   | Code    |
+| `message` | `string`  | 否   | Message |
+| `data`    | `array`   | 否   | Data    |
+
+**Status Code**: `422` - Validation Error
+
+Format: `application/json`
+
+| 参数名   | 类型                     | 必填 | 描述   |
+| :------- | :----------------------- | :--- | :----- |
+| `detail` | `Array[ValidationError]` | 否   | Detail |
+
+---
+
+### 设置角色菜单
+
+**URL**: `/api/v1/roles/{id}/menus`
+
+**Method**: `PUT`
+
+**Description**:
+
+设置角色菜单（全量覆盖，幂等）。
+
+#### Requests Parameters (Query/Path)
+
+| 参数名 | 位置   | 类型     | 必填 | 描述 | Default |
+| :----- | :----- | :------- | :--- | :--- | :------ |
+| `id`   | `path` | `string` | 是   | Id   |         |
+
+#### Request Body (application/json)
+
+| 参数名     | 类型            | 必填 | 描述           |
+| :--------- | :-------------- | :--- | :------------- |
+| `menu_ids` | `Array[string]` | 否   | 关联菜单ID列表 |
+
+#### Responses
+
+**Status Code**: `200` - Successful Response
+
+Format: `application/json`
+
+| 参数名    | 类型      | 必填 | 描述    |
+| :-------- | :-------- | :--- | :------ |
+| `code`    | `integer` | 否   | Code    |
+| `message` | `string`  | 否   | Message |
+| `data`    | `array`   | 否   | Data    |
 
 **Status Code**: `422` - Validation Error
 
@@ -1774,6 +1854,88 @@ Format: `application/json`
 | `code`    | `integer`      | 否   | Code    |
 | `message` | `string`       | 否   | Message |
 | `data`    | `UserResponse` | 否   |         |
+
+**Status Code**: `422` - Validation Error
+
+Format: `application/json`
+
+| 参数名   | 类型                     | 必填 | 描述   |
+| :------- | :----------------------- | :--- | :----- |
+| `detail` | `Array[ValidationError]` | 否   | Detail |
+
+---
+
+### 获取用户角色
+
+**URL**: `/api/v1/users/{user_id}/roles`
+
+**Method**: `GET`
+
+**Description**:
+
+获取用户已绑定的角色列表。
+
+#### Requests Parameters (Query/Path)
+
+| 参数名    | 位置   | 类型     | 必填 | 描述    | Default |
+| :-------- | :----- | :------- | :--- | :------ | :------ |
+| `user_id` | `path` | `string` | 是   | User Id |         |
+
+#### Responses
+
+**Status Code**: `200` - Successful Response
+
+Format: `application/json`
+
+| 参数名    | 类型      | 必填 | 描述    |
+| :-------- | :-------- | :--- | :------ |
+| `code`    | `integer` | 否   | Code    |
+| `message` | `string`  | 否   | Message |
+| `data`    | `array`   | 否   | Data    |
+
+**Status Code**: `422` - Validation Error
+
+Format: `application/json`
+
+| 参数名   | 类型                     | 必填 | 描述   |
+| :------- | :----------------------- | :--- | :----- |
+| `detail` | `Array[ValidationError]` | 否   | Detail |
+
+---
+
+### 设置用户角色
+
+**URL**: `/api/v1/users/{user_id}/roles`
+
+**Method**: `PUT`
+
+**Description**:
+
+设置用户角色（全量覆盖，幂等）。
+
+#### Requests Parameters (Query/Path)
+
+| 参数名    | 位置   | 类型     | 必填 | 描述    | Default |
+| :-------- | :----- | :------- | :--- | :------ | :------ |
+| `user_id` | `path` | `string` | 是   | User Id |         |
+
+#### Request Body (application/json)
+
+| 参数名     | 类型            | 必填 | 描述       |
+| :--------- | :-------------- | :--- | :--------- |
+| `role_ids` | `Array[string]` | 否   | 角色ID列表 |
+
+#### Responses
+
+**Status Code**: `200` - Successful Response
+
+Format: `application/json`
+
+| 参数名    | 类型      | 必填 | 描述    |
+| :-------- | :-------- | :--- | :------ |
+| `code`    | `integer` | 否   | Code    |
+| `message` | `string`  | 否   | Message |
+| `data`    | `array`   | 否   | Data    |
 
 **Status Code**: `422` - Validation Error
 

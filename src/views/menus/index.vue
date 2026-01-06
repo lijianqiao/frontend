@@ -6,7 +6,6 @@ import {
   NInput,
   NModal,
   NSwitch,
-  useMessage,
   useDialog,
   type DataTableColumns,
   NTag,
@@ -17,6 +16,7 @@ import {
   NFormItemGridItem,
   type DropdownOption,
 } from 'naive-ui'
+import { $alert } from '@/utils/alert'
 import {
   getMenus,
   getMenuOptions,
@@ -37,8 +37,8 @@ defineOptions({
   name: 'MenuManagement',
 })
 
-const message = useMessage()
 const dialog = useDialog()
+// const message = useMessage()
 const tableRef = ref()
 const recycleBinTableRef = ref()
 
@@ -52,7 +52,7 @@ const handleStatusChange = async (row: Menu, value: boolean) => {
   try {
     row.is_active = value
     await updateMenu(row.id, { is_active: value })
-    message.success(`${value ? '启用' : '停用'}成功`)
+    $alert.success(`${value ? '启用' : '停用'}成功`)
   } catch (error) {
     row.is_active = originalValue
     console.error(error)
@@ -316,10 +316,10 @@ const handleSubmit = (e: MouseEvent) => {
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
           const { id, ...createData } = data
           await createMenu(createData)
-          message.success('创建成功')
+          $alert.success('创建成功')
         } else {
           await updateMenu(data.id, data)
-          message.success('更新成功')
+          $alert.success('更新成功')
         }
         showModal.value = false
         tableRef.value?.reload()
@@ -339,7 +339,7 @@ const handleDelete = (row: Menu) => {
     onPositiveClick: async () => {
       try {
         await deleteMenu(row.id)
-        message.success('删除成功')
+        $alert.success('删除成功')
         tableRef.value?.reload()
       } catch {
         // Error handled
@@ -373,7 +373,7 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: Menu
   if (key === 'restore') {
     try {
       await restoreMenu(row.id)
-      message.success('恢复成功')
+      $alert.success('恢复成功')
       tableRef.value?.reload()
       recycleBinTableRef.value?.reload()
     } catch {
@@ -389,7 +389,7 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: Menu
       onPositiveClick: async () => {
         try {
           await batchDeleteMenus([row.id], true)
-          message.success('彻底删除成功')
+          $alert.success('彻底删除成功')
           recycleBinTableRef.value?.reload()
         } catch {
           // Error handled

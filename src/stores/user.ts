@@ -50,9 +50,27 @@ export const useUserStore = defineStore('user', () => {
   async function fetchUserMenus() {
     try {
       const res = await getMyMenus()
-      // Ensure we handle the response correctly. Standard ResponseBase<Menu[]>
       if (res.data) {
         userMenus.value = res.data
+
+        // Extract permissions from menus
+        const perms: string[] = []
+        const extractPermissions = (menus: Menu[]) => {
+          menus.forEach((menu) => {
+            if (menu.permission) {
+              perms.push(menu.permission)
+            }
+            if (menu.children && menu.children.length > 0) {
+              extractPermissions(menu.children)
+            }
+          })
+        }
+        extractPermissions(res.data)
+
+        // Merge with existing permissions (from userInfo if any, though likely empty)
+        // Use Set to ensure uniqueness
+        const uniquePerms = Array.from(new Set([...permissions.value, ...perms]))
+        permissions.value = uniquePerms
       }
       return res.data
     } catch (error) {
@@ -64,6 +82,19 @@ export const useUserStore = defineStore('user', () => {
   function logout() {
     clearToken()
     window.location.href = '/login'
+  }
+
+  function hasMenu(routeName: string): boolean {
+    const checkMenu = (menus: Menu[]): boolean => {
+      for (const menu of menus) {
+        if (menu.name === routeName) return true
+        if (menu.children && menu.children.length > 0) {
+          if (checkMenu(menu.children)) return true
+        }
+      }
+      return false
+    }
+    return checkMenu(userMenus.value)
   }
 
   return {
@@ -78,5 +109,6 @@ export const useUserStore = defineStore('user', () => {
     fetchUserInfo,
     fetchUserMenus,
     logout,
+    hasMenu,
   }
 })

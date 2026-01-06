@@ -8,6 +8,7 @@ import {
   zhCN,
   dateZhCN,
 } from 'naive-ui'
+import GlobalAlerts from '@/components/common/GlobalAlerts.vue'
 </script>
 
 <template>
@@ -34,9 +35,11 @@ import {
     }"
   >
     <n-global-style />
+    <!-- Keep providers for now, but Message/Notification might be deprecated if we replace all -->
     <n-message-provider>
       <n-dialog-provider>
         <n-notification-provider>
+          <GlobalAlerts />
           <router-view />
         </n-notification-provider>
       </n-dialog-provider>

@@ -62,28 +62,29 @@ export function deleteRole(id: string) {
   })
 }
 
-export function batchDeleteRoles(ids: string[], hard_delete: boolean = false) {
-  return request<ResponseBase<unknown>>({
-    url: '/roles/batch',
-    method: 'delete',
-    data: { ids, hard_delete },
-  })
-}
-
 // Permission related APIs
 export function getRoleMenus(roleId: string) {
-  // Returns list of menu IDs
-  return request<ResponseBase<string[] | { menu_ids: string[] }>>({
+  // Returns list of menu IDs (array of strings)
+  return request<ResponseBase<string[]>>({
     url: `/roles/${roleId}/menus`,
     method: 'get',
   })
 }
 
 export function updateRoleMenus(roleId: string, menuIds: string[]) {
-  return request<ResponseBase<unknown>>({
+  // Sets role menus
+  return request<ResponseBase<string[]>>({
     url: `/roles/${roleId}/menus`,
     method: 'put',
     data: { menu_ids: menuIds },
+  })
+}
+
+export function batchDeleteRoles(ids: string[], hard_delete: boolean = false) {
+  return request<ResponseBase<unknown>>({
+    url: '/roles/batch',
+    method: 'delete',
+    data: { ids, hard_delete },
   })
 }
 

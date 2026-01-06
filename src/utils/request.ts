@@ -1,9 +1,7 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios'
-import { createDiscreteApi } from 'naive-ui'
-import type { ResponseBase } from '@/types/api'
+import { $alert } from '@/utils/alert'
 import router from '@/router'
-
-const { message } = createDiscreteApi(['message'])
+import type { ResponseBase } from '@/types/api'
 
 const service: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
@@ -35,7 +33,7 @@ service.interceptors.response.use(
     if (response.status === 200) {
       return res as unknown as AxiosResponse
     }
-    message.error(res.message || '请求错误')
+    $alert.error(res.message || '请求错误')
     return Promise.reject(new Error(res.message || '请求错误'))
   },
   async (error) => {
@@ -89,9 +87,13 @@ service.interceptors.response.use(
         isRefreshing = false
       }
     } else if (error.response?.status === 403) {
-      message.error('无权访问')
+      $alert.warning('权限不足', 3000)
     } else {
-      message.error(msg)
+      // Default error handling for other status codes
+      // Always show error message for status >= 400 (except 403 handled above)
+      if (error.response?.status && error.response.status >= 400) {
+        $alert.error(msg)
+      }
     }
 
     return Promise.reject(error)

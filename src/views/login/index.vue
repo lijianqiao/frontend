@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useMessage, NIcon } from 'naive-ui'
+import { NIcon } from 'naive-ui'
 import { PersonOutline, LockClosedOutline } from '@vicons/ionicons5'
+import { $alert } from '@/utils/alert'
 import { login } from '@/api/auth'
 import { useUserStore } from '@/stores/user'
 
@@ -11,7 +12,7 @@ defineOptions({
 })
 
 const router = useRouter()
-const message = useMessage()
+// const message = useMessage()
 const userStore = useUserStore()
 
 const formRef = ref()
@@ -51,7 +52,7 @@ const handleLogin = async (e: Event) => {
         userStore.setToken(token)
         localStorage.setItem('refresh_token', refreshToken)
 
-        message.success('登录成功')
+        $alert.success('登录成功')
         router.push('/')
       } catch (error) {
         console.error(error)

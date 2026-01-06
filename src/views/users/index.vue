@@ -6,13 +6,14 @@ import {
   NInput,
   NModal,
   NSwitch,
-  useMessage,
+  // useMessage, // Removed
   useDialog,
   type DataTableColumns,
   NTag,
   NSelect,
   type DropdownOption,
 } from 'naive-ui'
+import { $alert } from '@/utils/alert'
 import {
   getUsers,
   createUser,
@@ -21,9 +22,12 @@ import {
   resetUserPassword,
   getRecycleBinUsers,
   restoreUser,
+  getUserRoles,
+  updateUserRoles,
   type User,
   type UserSearchParams,
 } from '@/api/users'
+import { getRoles } from '@/api/roles'
 import { formatDateTime } from '@/utils/date'
 import ProTable, { type FilterConfig } from '@/components/common/ProTable.vue'
 
@@ -31,8 +35,8 @@ defineOptions({
   name: 'UserManagement',
 })
 
-const message = useMessage()
 const dialog = useDialog()
+// const message = useMessage()
 
 // ProTable Reference
 // ProTable Reference
@@ -44,7 +48,7 @@ const handleStatusChange = async (row: User, value: boolean) => {
   try {
     row.is_active = value // Optimistic update
     await updateUser(row.id, { is_active: value })
-    message.success(`${value ? '启用' : '停用'}成功`)
+    $alert.success(`${value ? '启用' : '停用'}成功`)
   } catch (error) {
     row.is_active = originalValue // Revert on error
     console.error(error)
@@ -139,6 +143,7 @@ const loadData = async (params: UserSearchParams) => {
 // Context Menu Options
 const contextMenuOptions: DropdownOption[] = [
   { label: '编辑', key: 'edit' },
+  { label: '分配角色', key: 'assign_roles' },
   { label: '重置密码', key: 'reset_password' },
   { label: '删除', key: 'delete' },
 ]
@@ -147,6 +152,7 @@ const handleContextMenuSelect = (key: string | number, row: User) => {
   if (key === 'edit') handleEdit(row)
   if (key === 'delete') handleDelete(row)
   if (key === 'reset_password') handleResetPassword(row)
+  if (key === 'assign_roles') handleAssignRoles(row)
 }
 
 // Edit User
@@ -220,7 +226,7 @@ const submitCreate = (e: MouseEvent) => {
       try {
         if (modalType.value === 'create') {
           await createUser(createModel.value)
-          message.success('用户创建成功')
+          $alert.success('用户创建成功')
         } else {
           // We need updateUser API.
           // Assuming it exists or I will add it.
@@ -228,7 +234,7 @@ const submitCreate = (e: MouseEvent) => {
           // User asked for "Edit module". I must implement it.
           // I will add `updateUser` to imports in next step.
           await updateUser(createModel.value.id, createModel.value)
-          message.success('用户更新成功')
+          $alert.success('用户更新成功')
         }
         showCreateModal.value = false
         tableRef.value?.reload()
@@ -255,7 +261,7 @@ const submitResetPwd = (e: MouseEvent) => {
     if (!errors) {
       try {
         await resetUserPassword(resetPwdModel.value.userId, resetPwdModel.value.newPassword)
-        message.success('密码重置成功')
+        $alert.success('密码重置成功')
         showResetPwdModal.value = false
       } catch {
         // Error handled
@@ -274,7 +280,7 @@ const handleDelete = (row: User) => {
     onPositiveClick: async () => {
       try {
         await batchDeleteUsers([row.id])
-        message.success('用户已删除')
+        $alert.success('用户已删除')
         tableRef.value?.reload()
       } catch {
         // Error handled
@@ -293,7 +299,7 @@ const handleBatchDelete = (ids: Array<string | number>) => {
     onPositiveClick: async () => {
       try {
         await batchDeleteUsers(ids as string[])
-        message.success('批量删除成功')
+        $alert.success('批量删除成功')
         tableRef.value?.reload()
       } catch {
         // Error handled
@@ -325,7 +331,7 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: User
   if (key === 'restore') {
     try {
       await restoreUser(row.id)
-      message.success('恢复成功')
+      $alert.success('恢复成功')
       tableRef.value?.reload() // Refresh main table
       recycleBinTableRef.value?.reload() // Refresh recycle bin
     } catch {
@@ -341,13 +347,66 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: User
       onPositiveClick: async () => {
         try {
           await batchDeleteUsers([row.id], true)
-          message.success('彻底删除成功')
+          $alert.success('彻底删除成功')
           recycleBinTableRef.value?.reload() // Refresh recycle bin
         } catch {
           // Error handled
         }
       },
     })
+  }
+}
+
+// Assign Roles
+const showRoleModal = ref(false)
+const roleUserId = ref('')
+const roleOptions = ref<{ label: string; value: string }[]>([])
+const checkedRoleIds = ref<string[]>([])
+const roleLoading = ref(false)
+
+const handleAssignRoles = async (row: User) => {
+  roleUserId.value = row.id
+  showRoleModal.value = true
+  roleLoading.value = true
+  checkedRoleIds.value = []
+
+  try {
+    // parallel fetch: all roles and user roles
+    // Use page_size=100 for roles to get most of them. Ideal is a dedicated 'options' API but getRoles works.
+    const [rolesRes, userRolesRes] = await Promise.all([
+      getRoles({ page_size: 100 }),
+      getUserRoles(row.id),
+    ])
+
+    const roles = rolesRes.data.items || []
+    roleOptions.value = roles.map((r) => ({ label: r.name, value: r.id }))
+
+    const userRoleData = userRolesRes.data
+    if (Array.isArray(userRoleData)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      checkedRoleIds.value = userRoleData.map((r: any) => (typeof r === 'object' ? r.id : r))
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (error: any) {
+    console.error(error)
+    if (error.response?.status !== 403) {
+      $alert.error('加载角色数据失败')
+    }
+  } finally {
+    roleLoading.value = false
+  }
+}
+
+const submitAssignRoles = async () => {
+  roleLoading.value = true
+  try {
+    await updateUserRoles(roleUserId.value, checkedRoleIds.value)
+    $alert.success('角色分配成功')
+    showRoleModal.value = false
+  } catch (error) {
+    console.error(error)
+  } finally {
+    roleLoading.value = false
   }
 }
 //   { title: '昵称', key: 'nickname' },
@@ -468,6 +527,25 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: User
       <template #action>
         <n-button @click="showResetPwdModal = false">取消</n-button>
         <n-button type="primary" @click="submitResetPwd">提交</n-button>
+      </template>
+    </n-modal>
+
+    <!-- Assign Roles Modal -->
+    <n-modal v-model:show="showRoleModal" preset="dialog" title="分配角色">
+      <div v-if="roleLoading" style="padding: 20px; text-align: center">加载中...</div>
+      <n-form v-else>
+        <n-form-item label="角色选择">
+          <n-select
+            v-model:value="checkedRoleIds"
+            multiple
+            :options="roleOptions"
+            placeholder="请选择角色"
+          />
+        </n-form-item>
+      </n-form>
+      <template #action>
+        <n-button @click="showRoleModal = false">取消</n-button>
+        <n-button type="primary" :loading="roleLoading" @click="submitAssignRoles">保存</n-button>
       </template>
     </n-modal>
   </div>

@@ -6,13 +6,14 @@ import {
   NInput,
   NModal,
   NSwitch,
-  useMessage,
+  // useMessage, // Removed
   useDialog,
   type DataTableColumns,
   NTree,
   type TreeOption,
   type DropdownOption,
 } from 'naive-ui'
+import { $alert } from '@/utils/alert'
 import {
   getRoles,
   createRole,
@@ -27,15 +28,15 @@ import {
   type RoleSearchParams,
 } from '@/api/roles'
 import { formatDateTime } from '@/utils/date'
-import { getMenus, type Menu } from '@/api/menus'
+import { getMenuOptions, type Menu } from '@/api/menus'
 import ProTable, { type FilterConfig } from '@/components/common/ProTable.vue'
 
 defineOptions({
   name: 'RoleManagement',
 })
 
-const message = useMessage()
 const dialog = useDialog()
+// const message = useMessage()
 const tableRef = ref()
 const recycleBinTableRef = ref()
 
@@ -44,7 +45,7 @@ const handleStatusChange = async (row: Role, value: boolean) => {
   try {
     row.is_active = value
     await updateRole(row.id, { is_active: value })
-    message.success(`${value ? '启用' : '停用'}成功`)
+    $alert.success(`${value ? '启用' : '停用'}成功`)
   } catch (error) {
     row.is_active = originalValue
     console.error(error)
@@ -170,10 +171,10 @@ const handleSubmit = (e: MouseEvent) => {
       try {
         if (modalType.value === 'create') {
           await createRole(model.value)
-          message.success('创建成功')
+          $alert.success('创建成功')
         } else {
           await updateRole(model.value.id, model.value)
-          message.success('更新成功')
+          $alert.success('更新成功')
         }
         showModal.value = false
         tableRef.value?.reload()
@@ -194,7 +195,7 @@ const handleDelete = (row: Role) => {
     onPositiveClick: async () => {
       try {
         await deleteRole(row.id)
-        message.success('删除成功')
+        $alert.success('删除成功')
         tableRef.value?.reload()
       } catch {
         // Error handled
@@ -212,7 +213,7 @@ const handleBatchDelete = (ids: Array<string | number>) => {
     onPositiveClick: async () => {
       try {
         await Promise.all(ids.map((id) => deleteRole(id as string)))
-        message.success('批量删除成功')
+        $alert.success('批量删除成功')
         tableRef.value?.reload()
       } catch {
         // Error handled
@@ -227,6 +228,15 @@ const permRoleId = ref('')
 const permTreeData = ref<TreeOption[]>([])
 const checkedKeys = ref<string[]>([])
 const permLoading = ref(false)
+const permPattern = ref('')
+
+// Filter function for Tree Search
+const filterPermTree = (pattern: string, option: TreeOption): boolean => {
+  if (option.label && typeof option.label === 'string') {
+    return option.label.toLowerCase().includes(pattern.toLowerCase())
+  }
+  return false
+}
 
 // Helper to convert Menu[] to TreeOption[]
 const mapMenusToOptions = (menus: Menu[]): TreeOption[] => {
@@ -241,27 +251,26 @@ const handlePermissions = async (row: Role) => {
   permRoleId.value = row.id
   showPermModal.value = true
   permLoading.value = true
+  checkedKeys.value = []
   try {
-    const [menusRes, roleMenusRes] = await Promise.all([getMenus(), getRoleMenus(row.id)])
-
-    // Fix: API returns PaginatedResponse
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const menuData = menusRes.data as any
-    const menuItems = menuData.items || []
+    const [menusRes, roleMenusRes] = await Promise.all([getMenuOptions(), getRoleMenus(row.id)])
+    const menuItems = menusRes.data || []
     permTreeData.value = mapMenusToOptions(menuItems)
 
-    const roleData = roleMenusRes.data
-    if (Array.isArray(roleData)) {
-      checkedKeys.value = roleData
-    } else if (roleData && typeof roleData === 'object' && 'menu_ids' in roleData) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      checkedKeys.value = (roleData as any).menu_ids
+    const roleMenuData = roleMenusRes.data
+    // Assuming API returns string[] or { menu_ids: string[] }
+    // Based on api.md, it returns 'array' (likely string[] since we defined it as such in api/roles.ts)
+    if (Array.isArray(roleMenuData)) {
+      checkedKeys.value = roleMenuData
     } else {
       checkedKeys.value = []
     }
-  } catch (e) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (e: any) {
     console.error(e)
-    message.error('加载权限数据失败')
+    if (e.response?.status !== 403) {
+      $alert.error('加载权限数据失败')
+    }
   } finally {
     permLoading.value = false
   }
@@ -271,7 +280,7 @@ const submitPermissions = async () => {
   permLoading.value = true
   try {
     await updateRoleMenus(permRoleId.value, checkedKeys.value)
-    message.success('权限分配成功')
+    $alert.success('权限分配成功')
     showPermModal.value = false
   } catch {
     // Error handled
@@ -303,7 +312,7 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: Role
   if (key === 'restore') {
     try {
       await restoreRole(row.id)
-      message.success('恢复成功')
+      $alert.success('恢复成功')
       tableRef.value?.reload()
       recycleBinTableRef.value?.reload()
     } catch {
@@ -319,7 +328,7 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: Role
       onPositiveClick: async () => {
         try {
           await batchDeleteRoles([row.id], true)
-          message.success('彻底删除成功')
+          $alert.success('彻底删除成功')
           recycleBinTableRef.value?.reload()
         } catch {
           // Error handled
@@ -401,12 +410,21 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: Role
     <!-- Permissions Modal -->
     <n-modal v-model:show="showPermModal" preset="dialog" title="分配菜单权限">
       <div style="max-height: 400px; overflow: auto">
+        <n-input
+          v-model:value="permPattern"
+          placeholder="搜索菜单权限..."
+          style="margin-bottom: 8px"
+        />
         <n-tree
           block-line
           cascade
           checkable
+          show-line
+          expand-on-pattern-match
           :data="permTreeData"
           :checked-keys="checkedKeys"
+          :pattern="permPattern"
+          :filter="filterPermTree"
           @update:checked-keys="(keys) => (checkedKeys = keys)"
         />
       </div>

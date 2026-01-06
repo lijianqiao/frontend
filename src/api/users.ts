@@ -61,6 +61,23 @@ export function updateUser(id: string | number, data: UserUpdate) {
   })
 }
 
+// User Role Assignment
+export function getUserRoles(userId: string) {
+  // Returns list of Role IDs
+  return request<ResponseBase<string[]>>({
+    url: `/users/${userId}/roles`,
+    method: 'get',
+  })
+}
+
+export function updateUserRoles(userId: string, roleIds: string[]) {
+  return request<ResponseBase<string[]>>({
+    url: `/users/${userId}/roles`,
+    method: 'put',
+    data: { role_ids: roleIds },
+  })
+}
+
 export function batchDeleteUsers(ids: string[], hard_delete: boolean = false) {
   return request<ResponseBase<unknown>>({
     url: '/users/batch',
