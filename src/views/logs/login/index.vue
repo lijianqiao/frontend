@@ -43,13 +43,13 @@ const handleContextMenuSelect = (key: string | number, row: LoginLog) => {
 }
 
 const columns: DataTableColumns<LoginLog> = [
-  { title: '用户名', key: 'username', width: 100 },
+  { title: '用户名', key: 'username', width: 120 },
   { title: 'IP地址', key: 'ip', width: 140 },
-  { title: '浏览', key: 'browser', width: 120 },
+  { title: '浏览', key: 'browser', width: 200 },
   {
     title: '操作系统',
     key: 'os',
-    width: 120,
+    width: 200,
   },
   { title: '设备', key: 'device', width: 100 },
   {
@@ -64,7 +64,7 @@ const columns: DataTableColumns<LoginLog> = [
       )
     },
   },
-  { title: '提示信息', key: 'msg' },
+  { title: '提示信息', key: 'msg', width: 200 },
   {
     title: '登录时间',
     key: 'created_at',

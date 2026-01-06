@@ -2,10 +2,11 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { getUserInfo } from '@/api/auth'
 import { getMyMenus, type Menu } from '@/api/menus'
+import type { User } from '@/api/users'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref<string | null>(localStorage.getItem('access_token'))
-  const userInfo = ref<Record<string, unknown> | null>(null)
+  const userInfo = ref<User | null>(null)
   const permissions = ref<string[]>([])
   const userMenus = ref<Menu[]>([])
 
@@ -22,7 +23,7 @@ export const useUserStore = defineStore('user', () => {
     localStorage.removeItem('refresh_token')
   }
 
-  function setUserInfo(info: Record<string, unknown>) {
+  function setUserInfo(info: User) {
     userInfo.value = info
   }
 
@@ -33,12 +34,10 @@ export const useUserStore = defineStore('user', () => {
   async function fetchUserInfo() {
     try {
       const res = await getUserInfo()
-      const data = res.data as unknown as Record<string, unknown>
+      const data = res.data
       userInfo.value = data
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if ((data as any).permissions) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        permissions.value = (data as any).permissions
+      if (data.permissions) {
+        permissions.value = data.permissions
       }
       return res.data
     } catch (error) {

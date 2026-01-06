@@ -24,6 +24,9 @@ export interface OperationLog {
   summary: string
   method: string
   path: string
+  params?: Record<string, unknown> | null
+  response_result?: Record<string, unknown> | null
+  user_agent?: string
   response_code: number
   duration: number
   created_at: string

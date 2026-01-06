@@ -8,6 +8,7 @@ import {
   NDescriptions,
   NDescriptionsItem,
   type DropdownOption,
+  NCode,
 } from 'naive-ui'
 import { getOperationLogs, type OperationLog, type LogSearchParams } from '@/api/logs'
 import ProTable, { type FilterConfig } from '@/components/common/ProTable.vue'
@@ -42,11 +43,12 @@ const handleContextMenuSelect = (key: string | number, row: OperationLog) => {
 }
 
 const columns: DataTableColumns<OperationLog> = [
-  { title: '操作人', key: 'username', width: 100 },
+  { title: '操作人', key: 'username', width: 100, fixed: 'left' },
   {
     title: '模块',
     key: 'module',
     width: 120,
+    fixed: 'left',
   },
   { title: '内容', key: 'summary', ellipsis: { tooltip: true } },
   {
@@ -73,6 +75,26 @@ const columns: DataTableColumns<OperationLog> = [
     },
   },
   { title: '路径', key: 'path', ellipsis: { tooltip: true } },
+  {
+    title: '参数',
+    key: 'params',
+    width: 200,
+    ellipsis: { tooltip: true },
+    render: (row) => (row.params ? JSON.stringify(row.params) : ''),
+  },
+  {
+    title: '响应',
+    key: 'response_result',
+    width: 200,
+    ellipsis: { tooltip: true },
+    render: (row) => (row.response_result ? JSON.stringify(row.response_result) : ''),
+  },
+  {
+    title: 'U/A',
+    key: 'user_agent',
+    width: 200,
+    ellipsis: { tooltip: true },
+  },
   {
     title: '状态码',
     key: 'response_code',
@@ -136,13 +158,20 @@ const handleReset = () => {}
       :context-menu-options="contextMenuOptions"
       search-placeholder="搜索操作人/IP/模块/操作内容/请求方法/路径"
       :search-filters="searchFilters"
+      :scroll-x="1800"
       @context-menu-select="handleContextMenuSelect"
       @reset="handleReset"
     />
 
-    <n-drawer v-model:show="drawerVisible" width="600" placement="right">
+    <n-drawer v-model:show="drawerVisible" width="700" placement="right">
       <n-drawer-content title="审计详情">
-        <n-descriptions :column="1" bordered label-placement="left" v-if="currentLog">
+        <n-descriptions
+          :column="1"
+          bordered
+          label-placement="left"
+          :label-style="{ 'white-space': 'nowrap', width: '120px' }"
+          v-if="currentLog"
+        >
           <n-descriptions-item label="ID">
             {{ currentLog.id }}
           </n-descriptions-item>
@@ -166,6 +195,19 @@ const handleReset = () => {}
           </n-descriptions-item>
           <n-descriptions-item label="请求路径">
             <div style="word-break: break-all">{{ currentLog.path }}</div>
+          </n-descriptions-item>
+          <n-descriptions-item label="请求参数">
+            <n-code :code="JSON.stringify(currentLog.params, null, 2)" language="json" word-wrap />
+          </n-descriptions-item>
+          <n-descriptions-item label="响应结果">
+            <n-code
+              :code="JSON.stringify(currentLog.response_result, null, 2)"
+              language="json"
+              word-wrap
+            />
+          </n-descriptions-item>
+          <n-descriptions-item label="User Agent">
+            {{ currentLog.user_agent }}
           </n-descriptions-item>
           <n-descriptions-item label="响应状态码">
             <n-tag :type="currentLog.response_code < 400 ? 'success' : 'error'">

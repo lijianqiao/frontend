@@ -14,6 +14,7 @@ declare module 'vue' {
     GlobalAlerts: typeof import('./src/components/common/GlobalAlerts.vue')['default']
     NAlert: typeof import('naive-ui')['NAlert']
     NButton: typeof import('naive-ui')['NButton']
+    NCode: typeof import('naive-ui')['NCode']
     NForm: typeof import('naive-ui')['NForm']
     NFormItem: typeof import('naive-ui')['NFormItem']
     NInput: typeof import('naive-ui')['NInput']

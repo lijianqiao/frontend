@@ -45,3 +45,25 @@ export function refreshToken(token: string) {
     },
   })
 }
+
+// Re-export specific update for current user
+export function updateCurrentUser(data: Partial<User>) {
+  return request<ResponseBase<User>>({
+    url: '/users/me',
+    method: 'put',
+    data,
+  })
+}
+
+export interface ChangePasswordParams {
+  old_password: string
+  new_password: string
+}
+
+export function changePassword(data: ChangePasswordParams) {
+  return request<ResponseBase<User>>({
+    url: '/users/me/password',
+    method: 'put',
+    data,
+  })
+}

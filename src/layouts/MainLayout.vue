@@ -1,11 +1,46 @@
 <script setup lang="ts">
 import { h, ref, computed, onMounted } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
-import { NIcon, type MenuOption, NBreadcrumb, NBreadcrumbItem, NDropdown } from 'naive-ui'
+import {
+  NIcon,
+  type MenuOption,
+  NBreadcrumb,
+  NBreadcrumbItem,
+  NDropdown,
+  NModal,
+  NForm,
+  NFormItem,
+  NInput,
+  NButton,
+  NSelect,
+  NDescriptions,
+  NDescriptionsItem,
+  NTag,
+  NTabs,
+  NTabPane,
+} from 'naive-ui'
 import * as Ionicons from '@vicons/ionicons5'
-import { PersonCircleOutline as UserIcon, LogOutOutline as LogoutIcon } from '@vicons/ionicons5'
+import {
+  PersonCircleOutline as UserIcon,
+  LogOutOutline as LogoutIcon,
+  PersonOutline as ProfileIcon,
+  LockClosedOutline as PasswordIcon,
+  PersonCircleOutline,
+  LockClosedOutline,
+  KeyOutline,
+  MailOutline,
+  PhonePortraitOutline,
+  TransgenderOutline,
+  PersonOutline,
+  CalendarOutline,
+  BriefcaseOutline,
+  PulseOutline,
+} from '@vicons/ionicons5'
 import { useUserStore } from '@/stores/user'
 import type { Menu } from '@/api/menus'
+import { updateCurrentUser, changePassword } from '@/api/auth'
+import { $alert } from '@/utils/alert'
+import { formatDateTime } from '@/utils/date'
 
 defineOptions({
   name: 'MainLayout',
@@ -78,6 +113,16 @@ const handleLogout = () => {
 
 const userDropdownOptions = [
   {
+    label: '个人信息',
+    key: 'profile',
+    icon: () => h(NIcon, null, { default: () => h(ProfileIcon) }),
+  },
+  {
+    label: '修改密码',
+    key: 'change-password',
+    icon: () => h(NIcon, null, { default: () => h(PasswordIcon) }),
+  },
+  {
     label: '退出登录',
     key: 'logout',
     icon: () => h(NIcon, null, { default: () => h(LogoutIcon) }),
@@ -88,6 +133,12 @@ const handleUserDropdownSelect = (key: string) => {
   if (key === 'logout') {
     handleLogout()
   }
+  if (key === 'profile') {
+    handleOpenProfile()
+  }
+  if (key === 'change-password') {
+    handleOpenChangePassword()
+  }
 }
 
 const activeKey = computed(() => {
@@ -97,6 +148,90 @@ const activeKey = computed(() => {
 const breadcrumbs = computed(() => {
   return route.matched.filter((r) => r.meta && r.meta.title).map((r) => r.meta.title as string)
 })
+
+// === User Profile Logic ===
+const showProfileModal = ref(false)
+const profileLoading = ref(false)
+const displayUsername = computed(() => {
+  return userStore.userInfo?.nickname || userStore.userInfo?.username || '用户'
+})
+
+const profileModel = ref({
+  nickname: '',
+  email: '',
+  phone: '',
+  gender: '保密',
+})
+
+const handleOpenProfile = () => {
+  const user = userStore.userInfo
+  if (user) {
+    profileModel.value = {
+      nickname: user.nickname || '',
+      email: user.email || '',
+      phone: user.phone || '',
+      gender: user.gender || '保密',
+    }
+    showProfileModal.value = true
+  }
+}
+
+const handleUpdateProfile = async () => {
+  profileLoading.value = true
+  try {
+    await updateCurrentUser(profileModel.value)
+    $alert.success('更新成功')
+    await userStore.fetchUserInfo() // Refresh
+    showProfileModal.value = false
+  } catch (error) {
+    console.error(error)
+  } finally {
+    profileLoading.value = false
+  }
+}
+
+// === Change Password Logic ===
+const showPasswordModal = ref(false)
+const passwordLoading = ref(false)
+const passwordModel = ref({
+  old_password: '',
+  new_password: '',
+  confirm_password: '',
+})
+
+const handleOpenChangePassword = () => {
+  passwordModel.value = {
+    old_password: '',
+    new_password: '',
+    confirm_password: '',
+  }
+  showPasswordModal.value = true
+}
+
+const handleChangePassword = async () => {
+  if (!passwordModel.value.old_password || !passwordModel.value.new_password) {
+    $alert.warning('请填写完整')
+    return
+  }
+  if (passwordModel.value.new_password !== passwordModel.value.confirm_password) {
+    $alert.warning('两次新密码不一致')
+    return
+  }
+  passwordLoading.value = true
+  try {
+    await changePassword({
+      old_password: passwordModel.value.old_password,
+      new_password: passwordModel.value.new_password,
+    })
+    $alert.success('密码修改成功，请重新登录')
+    showPasswordModal.value = false
+    userStore.logout()
+  } catch (error) {
+    console.error(error)
+  } finally {
+    passwordLoading.value = false
+  }
+}
 
 onMounted(() => {
   if (userStore.userMenus.length === 0) {
@@ -146,7 +281,7 @@ onMounted(() => {
           <n-dropdown :options="userDropdownOptions" @select="handleUserDropdownSelect">
             <div class="user-profile">
               <n-icon size="20" :component="UserIcon" />
-              <span class="username">管理员</span>
+              <span class="username">{{ displayUsername }}</span>
             </div>
           </n-dropdown>
         </div>
@@ -162,6 +297,185 @@ onMounted(() => {
         </router-view>
       </n-layout-content>
     </n-layout>
+
+    <!-- Profile Modal -->
+    <n-modal v-model:show="showProfileModal" preset="card" title="个人信息" style="width: 600px">
+      <n-tabs type="line" animated>
+        <n-tab-pane name="info" tab="基本信息">
+          <n-descriptions bordered label-placement="left" :column="1">
+            <n-descriptions-item>
+              <template #label>
+                <n-icon
+                  :component="PersonCircleOutline"
+                  style="margin-right: 4px; vertical-align: -2px"
+                />
+                用户名
+              </template>
+              {{ userStore.userInfo?.username }}
+            </n-descriptions-item>
+            <n-descriptions-item>
+              <template #label>
+                <n-icon
+                  :component="PersonOutline"
+                  style="margin-right: 4px; vertical-align: -2px"
+                />
+                昵称
+              </template>
+              {{ userStore.userInfo?.nickname || '未设置' }}
+            </n-descriptions-item>
+            <n-descriptions-item>
+              <template #label>
+                <n-icon
+                  :component="PhonePortraitOutline"
+                  style="margin-right: 4px; vertical-align: -2px"
+                />
+                手机号
+              </template>
+              {{ userStore.userInfo?.phone || '未设置' }}
+            </n-descriptions-item>
+            <n-descriptions-item>
+              <template #label>
+                <n-icon :component="MailOutline" style="margin-right: 4px; vertical-align: -2px" />
+                邮箱
+              </template>
+              {{ userStore.userInfo?.email || '未设置' }}
+            </n-descriptions-item>
+            <n-descriptions-item>
+              <template #label>
+                <n-icon
+                  :component="TransgenderOutline"
+                  style="margin-right: 4px; vertical-align: -2px"
+                />
+                性别
+              </template>
+              {{ userStore.userInfo?.gender || '未设置' }}
+            </n-descriptions-item>
+            <n-descriptions-item>
+              <template #label>
+                <n-icon :component="PulseOutline" style="margin-right: 4px; vertical-align: -2px" />
+                状态
+              </template>
+              <n-tag :type="userStore.userInfo?.is_active ? 'success' : 'error'">
+                {{ userStore.userInfo?.is_active ? '启用' : '停用' }}
+              </n-tag>
+            </n-descriptions-item>
+            <n-descriptions-item>
+              <template #label>
+                <n-icon
+                  :component="CalendarOutline"
+                  style="margin-right: 4px; vertical-align: -2px"
+                />
+                注册时间
+              </template>
+              {{ formatDateTime(userStore.userInfo?.created_at || '') }}
+            </n-descriptions-item>
+            <n-descriptions-item>
+              <template #label>
+                <n-icon
+                  :component="BriefcaseOutline"
+                  style="margin-right: 4px; vertical-align: -2px"
+                />
+                角色
+              </template>
+              {{ userStore.userInfo?.roles?.length ? '已分配' : '无角色' }}
+            </n-descriptions-item>
+          </n-descriptions>
+        </n-tab-pane>
+        <n-tab-pane name="edit" tab="修改资料">
+          <n-form
+            ref="profileFormRef"
+            :model="profileModel"
+            label-placement="left"
+            label-width="80"
+          >
+            <n-form-item label="昵称" path="nickname">
+              <n-input v-model:value="profileModel.nickname" placeholder="请输入昵称">
+                <template #prefix>
+                  <n-icon :component="PersonOutline" />
+                </template>
+              </n-input>
+            </n-form-item>
+            <n-form-item label="手机号" path="phone">
+              <n-input v-model:value="profileModel.phone" placeholder="请输入手机号">
+                <template #prefix>
+                  <n-icon :component="PhonePortraitOutline" />
+                </template>
+              </n-input>
+            </n-form-item>
+            <n-form-item label="邮箱" path="email">
+              <n-input v-model:value="profileModel.email" placeholder="请输入邮箱">
+                <template #prefix>
+                  <n-icon :component="MailOutline" />
+                </template>
+              </n-input>
+            </n-form-item>
+            <n-form-item label="性别" path="gender">
+              <n-select
+                v-model:value="profileModel.gender"
+                :options="[
+                  { label: '男', value: '男' },
+                  { label: '女', value: '女' },
+                  { label: '保密', value: '保密' },
+                ]"
+              />
+            </n-form-item>
+            <div style="display: flex; justify-content: flex-end">
+              <n-button type="primary" :loading="profileLoading" @click="handleUpdateProfile">
+                保存修改
+              </n-button>
+            </div>
+          </n-form>
+        </n-tab-pane>
+      </n-tabs>
+    </n-modal>
+
+    <!-- Change Password Modal -->
+    <n-modal v-model:show="showPasswordModal" preset="card" title="修改密码" style="width: 500px">
+      <n-form :model="passwordModel" label-placement="left" label-width="100">
+        <n-form-item label="旧密码" path="old_password" required>
+          <n-input
+            v-model:value="passwordModel.old_password"
+            type="password"
+            show-password-on="click"
+            placeholder="请输入旧密码"
+          >
+            <template #prefix>
+              <n-icon :component="KeyOutline" />
+            </template>
+          </n-input>
+        </n-form-item>
+        <n-form-item label="新密码" path="new_password" required>
+          <n-input
+            v-model:value="passwordModel.new_password"
+            type="password"
+            show-password-on="click"
+            placeholder="请输入新密码"
+          >
+            <template #prefix>
+              <n-icon :component="LockClosedOutline" />
+            </template>
+          </n-input>
+        </n-form-item>
+        <n-form-item label="确认新密码" path="confirm_password" required>
+          <n-input
+            v-model:value="passwordModel.confirm_password"
+            type="password"
+            show-password-on="click"
+            placeholder="请再次输入新密码"
+          >
+            <template #prefix>
+              <n-icon :component="LockClosedOutline" />
+            </template>
+          </n-input>
+        </n-form-item>
+        <div style="display: flex; justify-content: flex-end; gap: 12px">
+          <n-button @click="showPasswordModal = false">取消</n-button>
+          <n-button type="primary" :loading="passwordLoading" @click="handleChangePassword">
+            确认修改
+          </n-button>
+        </div>
+      </n-form>
+    </n-modal>
   </n-layout>
 </template>
 
