@@ -20,10 +20,11 @@ import {
   updateRole,
   deleteRole,
   batchDeleteRoles,
-  getRoleMenus,
-  updateRoleMenus,
   getRecycleBinRoles,
   restoreRole,
+  batchRestoreRoles,
+  getRoleMenus,
+  updateRoleMenus,
   type Role,
   type RoleSearchParams,
 } from '@/api/roles'
@@ -291,9 +292,48 @@ const submitPermissions = async () => {
 
 // Recycle Bin
 const showRecycleBin = ref(false)
+const checkedRecycleBinRowKeys = ref<Array<string | number>>([])
+
 const handleRecycleBin = () => {
   showRecycleBin.value = true
+  checkedRecycleBinRowKeys.value = []
 }
+
+const recycleBinColumns: DataTableColumns<Role> = columns
+
+const handleBatchRestore = async () => {
+  if (checkedRecycleBinRowKeys.value.length === 0) return
+  try {
+    await batchRestoreRoles(checkedRecycleBinRowKeys.value as string[])
+    $alert.success('批量恢复成功')
+    checkedRecycleBinRowKeys.value = []
+    recycleBinTableRef.value?.reload()
+    tableRef.value?.reload()
+  } catch {
+    // Error handled
+  }
+}
+
+const handleBatchHardDelete = () => {
+  if (checkedRecycleBinRowKeys.value.length === 0) return
+  dialog.warning({
+    title: '批量彻底删除',
+    content: `确定要彻底删除选中的 ${checkedRecycleBinRowKeys.value.length} 个角色吗? 此操作无法恢复!`,
+    positiveText: '确认',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await batchDeleteRoles(checkedRecycleBinRowKeys.value as string[], true)
+        $alert.success('批量彻底删除成功')
+        checkedRecycleBinRowKeys.value = []
+        recycleBinTableRef.value?.reload()
+      } catch {
+        // Error handled
+      }
+    },
+  })
+}
+
 const recycleBinRequest = async (params: RoleSearchParams) => {
   const res = await getRecycleBinRoles(params)
   const data = res.data
@@ -371,14 +411,34 @@ const handleRecycleBinContextMenuSelect = async (key: string | number, row: Role
     >
       <ProTable
         ref="recycleBinTableRef"
-        :columns="columns"
+        :columns="recycleBinColumns"
         :request="recycleBinRequest"
         :row-key="(row: Role) => row.id"
-        :search-placeholder="'搜索删除了的角色...'"
+        search-placeholder="搜索删除了的角色"
         :context-menu-options="recycleBinContextMenuOptions"
         @context-menu-select="handleRecycleBinContextMenuSelect"
+        v-model:checked-row-keys="checkedRecycleBinRowKeys"
         :scroll-x="1200"
-      />
+      >
+        <template #toolbar-left>
+          <n-space>
+            <n-button
+              type="success"
+              :disabled="checkedRecycleBinRowKeys.length === 0"
+              @click="handleBatchRestore"
+            >
+              批量恢复
+            </n-button>
+            <n-button
+              type="error"
+              :disabled="checkedRecycleBinRowKeys.length === 0"
+              @click="handleBatchHardDelete"
+            >
+              批量彻底删除
+            </n-button>
+          </n-space>
+        </template>
+      </ProTable>
     </n-modal>
 
     <!-- Create/Edit Modal -->

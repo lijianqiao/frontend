@@ -22,6 +22,7 @@ import {
   resetUserPassword,
   getRecycleBinUsers,
   restoreUser,
+  batchRestoreUsers,
   getUserRoles,
   updateUserRoles,
   type User,
@@ -310,9 +311,48 @@ const handleBatchDelete = (ids: Array<string | number>) => {
 
 // Recycle Bin
 const showRecycleBin = ref(false)
+const checkedRecycleBinRowKeys = ref<Array<string | number>>([])
+
 const handleRecycleBin = () => {
   showRecycleBin.value = true
+  checkedRecycleBinRowKeys.value = []
 }
+
+const recycleBinColumns: DataTableColumns<User> = columns
+
+const handleBatchRestore = async () => {
+  if (checkedRecycleBinRowKeys.value.length === 0) return
+  try {
+    await batchRestoreUsers(checkedRecycleBinRowKeys.value as string[])
+    $alert.success('批量恢复成功')
+    checkedRecycleBinRowKeys.value = []
+    recycleBinTableRef.value?.reload()
+    tableRef.value?.reload() // Refresh main table too
+  } catch {
+    // Error handled
+  }
+}
+
+const handleBatchHardDelete = () => {
+  if (checkedRecycleBinRowKeys.value.length === 0) return
+  dialog.warning({
+    title: '批量彻底删除',
+    content: `确定要彻底删除选中的 ${checkedRecycleBinRowKeys.value.length} 个用户吗? 此操作无法恢复!`,
+    positiveText: '确认',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await batchDeleteUsers(checkedRecycleBinRowKeys.value as string[], true)
+        $alert.success('批量彻底删除成功')
+        checkedRecycleBinRowKeys.value = []
+        recycleBinTableRef.value?.reload()
+      } catch {
+        // Error handled
+      }
+    },
+  })
+}
+
 const recycleBinRequest = async (params: UserSearchParams) => {
   const res = await getRecycleBinUsers(params)
   const data = res.data
@@ -448,14 +488,34 @@ const submitAssignRoles = async () => {
     >
       <ProTable
         ref="recycleBinTableRef"
-        :columns="columns"
+        :columns="recycleBinColumns"
         :request="recycleBinRequest"
         :row-key="(row: User) => row.id"
         :search-placeholder="'搜索删除了的用户...'"
         :context-menu-options="recycleBinContextMenuOptions"
         @context-menu-select="handleRecycleBinContextMenuSelect"
+        v-model:checked-row-keys="checkedRecycleBinRowKeys"
         :scroll-x="1500"
-      />
+      >
+        <template #toolbar-left>
+          <n-space>
+            <n-button
+              type="success"
+              :disabled="checkedRecycleBinRowKeys.length === 0"
+              @click="handleBatchRestore"
+            >
+              批量恢复
+            </n-button>
+            <n-button
+              type="error"
+              :disabled="checkedRecycleBinRowKeys.length === 0"
+              @click="handleBatchHardDelete"
+            >
+              批量彻底删除
+            </n-button>
+          </n-space>
+        </template>
+      </ProTable>
     </n-modal>
 
     <!-- Create/Edit Modal -->

@@ -16,75 +16,24 @@ const router = createRouter({
     },
     {
       path: '/',
+      name: 'MainLayout',
       component: () => import('@/layouts/MainLayout.vue'),
       redirect: '/dashboard',
       children: [
-        {
-          path: 'dashboard',
-          name: 'Dashboard',
-          component: () => import('@/views/dashboard/index.vue'),
-          meta: {
-            title: '仪表盘',
-          },
-        },
-        {
-          path: 'users',
-          name: 'UserMgmt',
-          component: () => import('@/views/users/index.vue'),
-          meta: {
-            title: '用户管理',
-            permission: 'sys:user:list',
-          },
-        },
-        {
-          path: 'roles',
-          name: 'RoleMgmt',
-          component: () => import('@/views/roles/index.vue'),
-          meta: {
-            title: '角色管理',
-            permission: 'sys:role:list',
-          },
-        },
-        {
-          path: 'menus',
-          name: 'MenuMgmt',
-          component: () => import('@/views/menus/index.vue'),
-          meta: {
-            title: '菜单管理',
-            permission: 'sys:menu:list',
-          },
-        },
-        {
-          path: 'logs/login',
-          name: 'LoginLog',
-          component: () => import('@/views/logs/login/index.vue'),
-          meta: {
-            title: '登录日志',
-            permission: 'sys:log:login:list',
-          },
-        },
-        {
-          path: 'logs/operation',
-          name: 'OperationLog',
-          component: () => import('@/views/logs/operation/index.vue'),
-          meta: {
-            title: '操作日志',
-            permission: 'sys:log:operation:list',
-          },
-        },
+        // Static routes removed. Dynamic routes will be added here.
       ],
+    },
+    {
+      path: '/403',
+      name: 'Forbidden',
+      component: () => import('@/views/error/403.vue'),
+      meta: { title: '403 Forbidden' },
     },
     {
       path: '/500',
       name: 'ServerError',
       component: () => import('@/views/error/500.vue'),
       meta: { title: '500 Server Error' },
-    },
-    {
-      path: '/:pathMatch(.*)*',
-      name: 'NotFound',
-      component: () => import('@/views/error/404.vue'),
-      meta: { title: '404 Not Found' },
     },
   ],
 })
@@ -105,25 +54,41 @@ router.beforeEach(async (to, from, next) => {
       await userStore.fetchUserInfo()
     } catch (error) {
       console.error(error)
-      // Fetch failed (e.g. invalid token), redirect to login
       userStore.logout()
       return
     }
   }
 
-  // Ensure permissions are populated.
-  // If userInfo didn't provide them, and we haven't extracted them from menus yet (or permissions are truly empty),
-  // we try to fetch menus to extract permissions (as per our store logic).
-  if (token && userStore.permissions.length === 0) {
+  // Dynamic Routing Logic
+  if (token && !userStore.isRoutesLoaded) {
     try {
-      await userStore.fetchUserMenus()
+      const { routes } = await userStore.fetchUserMenus()
+
+      // Add dynamic routes as children of MainLayout
+      routes.forEach((route) => {
+        router.addRoute('MainLayout', route)
+      })
+
+      // Also add 404 route at the end
+      router.addRoute({
+        path: '/:pathMatch(.*)*',
+        name: 'NotFound',
+        component: () => import('@/views/error/404.vue'),
+        meta: { title: '404 Not Found' },
+      })
+
+      // Hack to ensure addRoute takes effect
+      next({ ...to, replace: true })
+      return
     } catch (error) {
-      console.error('Failed to fetch menus for permissions', error)
+      console.error('Failed to generate dynamic routes', error)
+      userStore.logout()
+      return
     }
   }
 
   if (to.name === 'Login' && token) {
-    next({ name: 'Dashboard' })
+    next({ path: '/dashboard' })
     return
   }
 
@@ -131,15 +96,26 @@ router.beforeEach(async (to, from, next) => {
     const requiredPerm = to.meta.permission as string
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const isSuperuser = (userStore.userInfo as any)?.is_superuser
-    console.log('[Router] Checking Permission:', requiredPerm, 'UserPerms:', userStore.permissions)
+
+    // Check perm
     const hasPerm =
       isSuperuser ||
       userStore.permissions.includes(requiredPerm) ||
       userStore.permissions.includes('*:*:*') ||
-      userStore.hasMenu(to.name as string)
+      userStore.hasMenu(to.name as string) // Optional double check
+
     if (!hasPerm) {
       $alert.warning('无权访问')
-      next({ name: 'Forbidden' })
+      next({ name: 'Forbidden' }) // Ensure Forbidden route exists or redirect to 404?
+      // Since we don't have a Forbidden page in static routes map above (only 404/500/Login/Main),
+      // we might want to redirect to 404 or add a Forbidden page.
+      // For now, let's just abort or use 404.
+      // But wait, the previous code redirected to 'Forbidden'?
+      // Checking old code... it did next({ name: 'Forbidden' }).
+      // I don't see 'Forbidden' defined in the old static routes!
+      // Maybe it was handled by NotFound? Or it was broken?
+      // I will assume NotFound for now or just return false.
+      // Actually, let's keep it consistent. If 'Forbidden' is not defined, router will warn.
       loadingBar.error()
       return
     }

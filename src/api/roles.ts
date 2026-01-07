@@ -88,6 +88,14 @@ export function batchDeleteRoles(ids: string[], hard_delete: boolean = false) {
   })
 }
 
+export function batchRestoreRoles(ids: string[]) {
+  return request<ResponseBase<unknown>>({
+    url: '/roles/batch/restore',
+    method: 'post',
+    data: { ids },
+  })
+}
+
 export function getRecycleBinRoles(params?: RoleSearchParams) {
   return request<ResponseBase<PaginatedResponse<Role>>>({
     url: '/roles/recycle-bin',

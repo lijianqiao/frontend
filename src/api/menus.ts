@@ -98,6 +98,14 @@ export function batchDeleteMenus(ids: string[], hard_delete: boolean = false) {
   })
 }
 
+export function batchRestoreMenus(ids: string[]) {
+  return request<ResponseBase<unknown>>({
+    url: '/menus/batch/restore',
+    method: 'post',
+    data: { ids },
+  })
+}
+
 // 侧边栏菜单（当前用户可见）
 export function getMyMenus() {
   return request<ResponseBase<Menu[]>>({

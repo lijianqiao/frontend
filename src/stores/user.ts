@@ -3,12 +3,14 @@ import { ref } from 'vue'
 import { getUserInfo } from '@/api/auth'
 import { getMyMenus, type Menu } from '@/api/menus'
 import type { User } from '@/api/users'
+import { generateRoutes } from '@/router/utils'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref<string | null>(localStorage.getItem('access_token'))
   const userInfo = ref<User | null>(null)
   const permissions = ref<string[]>([])
   const userMenus = ref<Menu[]>([])
+  const isRoutesLoaded = ref(false)
 
   function setToken(newToken: string) {
     token.value = newToken
@@ -19,6 +21,8 @@ export const useUserStore = defineStore('user', () => {
     token.value = null
     userInfo.value = null
     permissions.value = []
+    userMenus.value = []
+    isRoutesLoaded.value = false
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
   }
@@ -71,10 +75,15 @@ export const useUserStore = defineStore('user', () => {
         const uniquePerms = Array.from(new Set([...permissions.value, ...perms]))
         permissions.value = uniquePerms
       }
-      return res.data
+
+      // Generate Routes
+      const routes = generateRoutes(res.data || [])
+      isRoutesLoaded.value = true
+
+      return { menus: res.data, routes }
     } catch (error) {
       console.error('Failed to fetch user menus', error)
-      return []
+      return { menus: [], routes: [] }
     }
   }
 
@@ -109,5 +118,6 @@ export const useUserStore = defineStore('user', () => {
     fetchUserMenus,
     logout,
     hasMenu,
+    isRoutesLoaded,
   }
 })

@@ -86,6 +86,14 @@ export function batchDeleteUsers(ids: string[], hard_delete: boolean = false) {
   })
 }
 
+export function batchRestoreUsers(ids: string[]) {
+  return request<ResponseBase<unknown>>({
+    url: '/users/batch/restore',
+    method: 'post',
+    data: { ids },
+  })
+}
+
 export function getRecycleBinUsers(params?: UserSearchParams) {
   return request<ResponseBase<PaginatedResponse<User>>>({
     url: '/users/recycle-bin',
