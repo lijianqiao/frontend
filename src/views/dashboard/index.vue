@@ -46,12 +46,11 @@ onMounted(async () => {
   loading.value = true
   try {
     const res = await getDashboardStats()
-    // Type assertion or check if needed, request.ts handles structure
     if (res.data) {
       stats.value = res.data
     }
-  } catch (error) {
-    console.error(error)
+  } catch {
+    // 错误已由 request.ts 统一处理
   } finally {
     loading.value = false
   }

@@ -85,24 +85,25 @@ router.beforeEach(async (to, from, next) => {
       const { routes } = await userStore.fetchUserMenus()
 
       // 添加动态路由到 MainLayout
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      routes.forEach((route: any) => {
+      routes.forEach((route) => {
         router.addRoute('MainLayout', route)
       })
 
-      // 添加 404 兜底路由
-      router.addRoute({
-        path: '/:pathMatch(.*)*',
-        name: 'NotFound',
-        component: () => import('@/views/error/404.vue'),
-        meta: { title: '404 Not Found' },
-      })
+      // 添加 404 兜底路由（先检查是否已存在，避免重复添加）
+      if (!router.hasRoute('NotFound')) {
+        router.addRoute({
+          path: '/:pathMatch(.*)*',
+          name: 'NotFound',
+          component: () => import('@/views/error/404.vue'),
+          meta: { title: '404 Not Found' },
+        })
+      }
 
       // 重新导航以使路由生效
       next({ ...to, replace: true })
       return
-    } catch (error) {
-      console.error('动态路由加载失败', error)
+    } catch {
+      // 错误由 request.ts 统一处理
       userStore.logout()
       return
     }
@@ -123,8 +124,7 @@ router.beforeEach(async (to, from, next) => {
   // 权限检查
   if (hasToken && to.meta.permission) {
     const requiredPerm = to.meta.permission as string
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const isSuperuser = (userStore.userInfo as any)?.is_superuser
+    const isSuperuser = userStore.userInfo?.is_superuser
 
     const hasPerm =
       isSuperuser ||

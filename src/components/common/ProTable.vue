@@ -50,6 +50,9 @@ const props = withDefaults(
     showAdd?: boolean
     showRecycleBin?: boolean
     showBatchDelete?: boolean
+    // 虚拟滚动配置（适用于大数据量场景）
+    virtualScroll?: boolean
+    maxHeight?: number
   }>(),
   {
     scrollX: 1000,
@@ -61,6 +64,8 @@ const props = withDefaults(
     showAdd: false,
     showRecycleBin: false,
     showBatchDelete: false,
+    virtualScroll: false,
+    maxHeight: 600,
   },
 )
 
@@ -412,6 +417,8 @@ defineExpose({
         @update:checked-row-keys="handleCheck"
         @update:filters="handleFiltersChange"
         :scroll-x="scrollX"
+        :virtual-scroll="virtualScroll"
+        :max-height="virtualScroll ? maxHeight : undefined"
         flex-height
         style="height: 100%; min-height: 600px; flex: 1"
       />

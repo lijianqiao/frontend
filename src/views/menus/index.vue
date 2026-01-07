@@ -54,9 +54,9 @@ const handleStatusChange = async (row: Menu, value: boolean) => {
     row.is_active = value
     await updateMenu(row.id, { is_active: value })
     $alert.success(`${value ? '启用' : '停用'}成功`)
-  } catch (error) {
+  } catch {
     row.is_active = originalValue
-    console.error(error)
+    $alert.error('操作失败')
   }
 }
 
@@ -159,13 +159,13 @@ const searchFilters: FilterConfig[] = [
 
 // Load Data
 const loadData = async (params: MenuSearchParams) => {
-  // Pass all params (page, page_size, keyword) to the API
   const res = await getMenus(params)
 
   const data = res.data
   const items = data.items || []
   const total = data.total || 0
 
+  // 总是更新菜单选项以保持同步（只在非搜索时更新，避免搜索结果覆盖完整列表）
   if (!params.keyword) {
     menuOptions.value = items
   }
@@ -235,8 +235,8 @@ const fetchMenuOptions = async () => {
   try {
     const res = await getMenuOptions()
     menuOptions.value = res.data
-  } catch (error) {
-    console.error('Failed to load menu options:', error)
+  } catch {
+    // 错误由 request.ts 统一处理
   }
 }
 
@@ -247,8 +247,8 @@ const fetchPermissionOptions = async () => {
       label: `${item.name} (${item.code})`,
       value: item.code,
     }))
-  } catch (error) {
-    console.error('Failed to load permission options:', error)
+  } catch {
+    // 错误由 request.ts 统一处理
   }
 }
 

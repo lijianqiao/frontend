@@ -37,22 +37,19 @@ defineOptions({
 })
 
 const dialog = useDialog()
-// const message = useMessage()
-
-// ProTable Reference
-// ProTable Reference
+// ProTable 引用
 const tableRef = ref()
 const recycleBinTableRef = ref()
 
 const handleStatusChange = async (row: User, value: boolean) => {
   const originalValue = row.is_active
   try {
-    row.is_active = value // Optimistic update
+    row.is_active = value // 乐观更新
     await updateUser(row.id, { is_active: value })
     $alert.success(`${value ? '启用' : '停用'}成功`)
-  } catch (error) {
-    row.is_active = originalValue // Revert on error
-    console.error(error)
+  } catch {
+    row.is_active = originalValue // 失败时回滚
+    $alert.error('操作失败')
   }
 }
 
@@ -426,10 +423,10 @@ const handleAssignRoles = async (row: User) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       checkedRoleIds.value = userRoleData.map((r: any) => (typeof r === 'object' ? r.id : r))
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (error: any) {
-    console.error(error)
-    if (error.response?.status !== 403) {
+  } catch (error: unknown) {
+    // 403 错误已由 request.ts 统一处理
+    const axiosError = error as { response?: { status?: number } }
+    if (axiosError.response?.status !== 403) {
       $alert.error('加载角色数据失败')
     }
   } finally {
@@ -443,17 +440,12 @@ const submitAssignRoles = async () => {
     await updateUserRoles(roleUserId.value, checkedRoleIds.value)
     $alert.success('角色分配成功')
     showRoleModal.value = false
-  } catch (error) {
-    console.error(error)
+  } catch {
+    // 错误已由 request.ts 统一处理
   } finally {
     roleLoading.value = false
   }
 }
-//   { title: '昵称', key: 'nickname' },
-//   { title: '删除时间', key: 'updated_at', render: (_) => 'N/A' }, // API doesn't seem to return deleted_at, maybe use updated_at? Or just standard fields.
-//   // Actually, standard fields are fine.
-//   { title: '邮箱', key: 'email' },
-// ]
 </script>
 
 <template>

@@ -47,9 +47,9 @@ const handleStatusChange = async (row: Role, value: boolean) => {
     row.is_active = value
     await updateRole(row.id, { is_active: value })
     $alert.success(`${value ? '启用' : '停用'}成功`)
-  } catch (error) {
+  } catch {
     row.is_active = originalValue
-    console.error(error)
+    $alert.error('操作失败')
   }
 }
 
@@ -266,10 +266,10 @@ const handlePermissions = async (row: Role) => {
     } else {
       checkedKeys.value = []
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (e: any) {
-    console.error(e)
-    if (e.response?.status !== 403) {
+  } catch (error: unknown) {
+    // 403 错误已由 request.ts 统一处理
+    const axiosError = error as { response?: { status?: number } }
+    if (axiosError.response?.status !== 403) {
       $alert.error('加载权限数据失败')
     }
   } finally {

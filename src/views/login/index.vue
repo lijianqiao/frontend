@@ -12,7 +12,6 @@ defineOptions({
 })
 
 const router = useRouter()
-// const message = useMessage()
 const userStore = useUserStore()
 
 const siteTitle = import.meta.env.VITE_SITE_TITLE || 'Admin RBAC'
@@ -46,19 +45,15 @@ const handleLogin = async (e: Event) => {
     if (!errors) {
       loading.value = true
       try {
+        // login() 已正确返回 LoginResult 类型
         const res = await login(model.value)
-        // 新方案：后端只返回 access_token，refresh_token 通过 HttpOnly Cookie 设置
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const data = res as any
-        const accessToken = data.access_token
-
-        // 只存储 access_token 到内存
-        userStore.setToken(accessToken)
+        // 直接使用类型安全的属性访问
+        userStore.setToken(res.access_token)
 
         $alert.success('登录成功')
         router.push('/')
-      } catch (error) {
-        console.error(error)
+      } catch {
+        // 错误已由 request.ts 统一处理和显示
       } finally {
         loading.value = false
       }

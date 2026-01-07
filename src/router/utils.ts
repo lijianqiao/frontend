@@ -1,45 +1,51 @@
-import type { RouteRecordRaw } from 'vue-router'
+/**
+ * @Author: li
+ * @Email: lijianqiao2906@live.com
+ * @FileName: utils.ts
+ * @DateTime: 2026-01-08
+ * @Docs: 动态路由生成工具
+ */
+
+import type { RouteRecordRaw, RouteComponent } from 'vue-router'
 import type { Menu } from '@/api/menus'
 
-// Glob all views to allow dynamic import lookup
+// Glob 导入所有视图组件，用于动态路由匹配
 const modules = import.meta.glob('@/views/**/*.vue')
 
 /**
- * Generate Vue Router routes from backend menu data.
- * @param menus List of menus from backend
- * @returns Array of RouteRecordRaw
+ * 根据后端菜单数据生成 Vue Router 路由配置
+ * @param menus 后端返回的菜单列表
+ * @returns RouteRecordRaw 数组
  */
-
 export function generateRoutes(menus: Menu[]): RouteRecordRaw[] {
   const routes: RouteRecordRaw[] = []
 
   for (const menu of menus) {
-    // Skip if type is permission or if no component (unless handled otherwise)
+    // 跳过权限点类型（不生成路由）
     if (menu.type === 'PERMISSION') continue
 
-    // Resolve Component
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let component: any
+    // 解析组件
+    let component: RouteComponent | (() => Promise<RouteComponent>) | undefined
 
     if (menu.component?.toUpperCase() === 'LAYOUT') {
-      // Map 'Layout' to a passthrough component so children can render
+      // Layout 类型映射到透传组件
       component = () => import('@/layouts/RouterView.vue')
     } else if (menu.component) {
       const key = `/src${menu.component}`
       if (modules[key]) {
-        component = modules[key]
+        component = modules[key] as () => Promise<RouteComponent>
       } else {
+        // 组件路径不存在，显示 404
         component = () => import('@/views/error/404.vue')
       }
-    } else {
-      if (menu.type === 'MENU') {
-        component = () => import('@/views/error/404.vue')
-      }
+    } else if (menu.type === 'MENU') {
+      // 菜单类型但没有组件路径，显示 404
+      component = () => import('@/views/error/404.vue')
     }
 
     const route: RouteRecordRaw = {
       path: menu.path,
-      name: menu.name, // 重要提示：必须与数据库中的唯一名称匹配
+      name: menu.name,
       component: component,
       meta: {
         title: menu.title,
