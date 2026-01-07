@@ -77,7 +77,11 @@ const handleLogin = async (e: Event) => {
 
       <n-form ref="formRef" :model="model" :rules="rules" size="large" :show-label="false">
         <n-form-item path="username">
-          <n-input v-model:value="model.username" placeholder="用户名" @keydown.enter.prevent>
+          <n-input
+            v-model:value="model.username"
+            placeholder="用户名"
+            @keydown.enter.prevent="handleLogin"
+          >
             <template #prefix>
               <n-icon size="18" color="#808695"><PersonOutline /></n-icon>
             </template>
@@ -89,7 +93,7 @@ const handleLogin = async (e: Event) => {
             type="password"
             show-password-on="click"
             placeholder="密码"
-            @keydown.enter.prevent
+            @keydown.enter.prevent="handleLogin"
           >
             <template #prefix>
               <n-icon size="18" color="#808695"><LockClosedOutline /></n-icon>

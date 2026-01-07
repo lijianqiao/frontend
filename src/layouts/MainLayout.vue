@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { h, ref, computed, onMounted } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import {
   NIcon,
   type MenuOption,
@@ -48,6 +48,7 @@ defineOptions({
 
 const userStore = useUserStore()
 const route = useRoute()
+const router = useRouter()
 const siteTitle = import.meta.env.VITE_SITE_TITLE || 'Admin RBAC'
 
 // 动态分辨率的图标图
@@ -254,7 +255,7 @@ onMounted(() => {
       @expand="collapsed = false"
       class="sidebar"
     >
-      <div class="logo">
+      <div class="logo" @click="router.push('/')" style="cursor: pointer">
         <div class="logo-icon">A</div>
         <span v-if="!collapsed" class="logo-title">{{ siteTitle }}</span>
       </div>
@@ -271,7 +272,9 @@ onMounted(() => {
       <n-layout-header bordered class="header">
         <div class="header-left">
           <n-breadcrumb>
-            <n-breadcrumb-item>首页</n-breadcrumb-item>
+            <n-breadcrumb-item>
+              <router-link to="/">首页</router-link>
+            </n-breadcrumb-item>
             <n-breadcrumb-item v-for="item in breadcrumbs" :key="item">
               {{ item }}
             </n-breadcrumb-item>
