@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { getUserInfo } from '@/api/auth'
+import { getUserInfo, logout as logoutApi } from '@/api/auth'
 import { getMyMenus, type Menu } from '@/api/menus'
 import type { User } from '@/api/users'
 import { generateRoutes } from '@/router/utils'
@@ -12,9 +12,10 @@ export const useUserStore = defineStore('user', () => {
   const userMenus = ref<Menu[]>([])
   const isRoutesLoaded = ref(false)
 
-  function setToken(newToken: string) {
-    token.value = newToken
-    localStorage.setItem('access_token', newToken)
+  function setToken(accessToken: string, refreshToken: string) {
+    token.value = accessToken
+    localStorage.setItem('access_token', accessToken)
+    localStorage.setItem('refresh_token', refreshToken)
   }
 
   function clearToken() {
@@ -33,6 +34,30 @@ export const useUserStore = defineStore('user', () => {
 
   function setPermissions(perms: string[]) {
     permissions.value = perms
+  }
+
+  // Attempt to refresh token using existing refresh_token
+  async function initialTokenRefresh(): Promise<boolean> {
+    const refreshTokenStr = localStorage.getItem('refresh_token')
+    if (!refreshTokenStr) return false
+
+    try {
+      // Dynamic import to avoid circular dependency if needed, but here we can import API directly
+      // However, auth.ts imports request.ts which imports router... circular risk is high.
+      // Use dynamic import for safety.
+      const { refreshToken } = await import('@/api/auth')
+      const res = await refreshToken(refreshTokenStr)
+
+      const { access_token, refresh_token } = res.data
+      if (access_token) {
+        setToken(access_token, refresh_token || refreshTokenStr)
+        return true
+      }
+      return false
+    } catch {
+      clearToken()
+      return false
+    }
   }
 
   async function fetchUserInfo() {
@@ -87,9 +112,15 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  function logout() {
-    clearToken()
-    window.location.href = '/login'
+  async function logout() {
+    try {
+      await logoutApi()
+    } catch (error) {
+      console.error('Logout failed:', error)
+    } finally {
+      clearToken()
+      window.location.href = '/login'
+    }
   }
 
   function hasMenu(routeName: string): boolean {
@@ -114,6 +145,7 @@ export const useUserStore = defineStore('user', () => {
     clearToken,
     setUserInfo,
     setPermissions,
+    initialTokenRefresh,
     fetchUserInfo,
     fetchUserMenus,
     logout,

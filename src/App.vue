@@ -8,7 +8,13 @@ import {
   zhCN,
   dateZhCN,
 } from 'naive-ui'
+import hljs from 'highlight.js/lib/core'
+import javascript from 'highlight.js/lib/languages/javascript'
+import json from 'highlight.js/lib/languages/json'
 import GlobalAlerts from '@/components/common/GlobalAlerts.vue'
+
+hljs.registerLanguage('javascript', javascript)
+hljs.registerLanguage('json', json)
 </script>
 
 <template>
@@ -32,7 +38,11 @@ import GlobalAlerts from '@/components/common/GlobalAlerts.vue'
       Input: {
         borderRadius: '8px',
       },
+      Code: {
+        // Adjust valid theme properties if needed or leave default
+      },
     }"
+    :hljs="hljs"
   >
     <n-global-style />
     <!-- Keep providers for now, but Message/Notification might be deprecated if we replace all -->

@@ -18,7 +18,6 @@ const router = createRouter({
       path: '/',
       name: 'MainLayout',
       component: () => import('@/layouts/MainLayout.vue'),
-      redirect: '/dashboard',
       children: [
         // Static routes removed. Dynamic routes will be added here.
       ],
@@ -40,8 +39,16 @@ const router = createRouter({
 
 router.beforeEach(async (to, from, next) => {
   loadingBar.start()
-  const token = localStorage.getItem('access_token')
+  let token = localStorage.getItem('access_token')
   const userStore = useUserStore()
+
+  // Startup Token Check: Access Token missing but Refresh Token exists?
+  if (!token && localStorage.getItem('refresh_token')) {
+    const refreshed = await userStore.initialTokenRefresh()
+    if (refreshed) {
+      token = localStorage.getItem('access_token')
+    }
+  }
 
   if (to.name !== 'Login' && !token) {
     $alert.error('请先登录')
@@ -65,7 +72,9 @@ router.beforeEach(async (to, from, next) => {
       const { routes } = await userStore.fetchUserMenus()
 
       // Add dynamic routes as children of MainLayout
-      routes.forEach((route) => {
+      // Add dynamic routes as children of MainLayout
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      routes.forEach((route: any) => {
         router.addRoute('MainLayout', route)
       })
 
@@ -88,6 +97,11 @@ router.beforeEach(async (to, from, next) => {
   }
 
   if (to.name === 'Login' && token) {
+    next({ path: '/dashboard' })
+    return
+  }
+
+  if (token && to.path === '/') {
     next({ path: '/dashboard' })
     return
   }

@@ -67,3 +67,10 @@ export function changePassword(data: ChangePasswordParams) {
     data,
   })
 }
+
+export function logout() {
+  return request<ResponseBase<void>>({
+    url: '/auth/logout',
+    method: 'post',
+  })
+}

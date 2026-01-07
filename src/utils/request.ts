@@ -38,11 +38,21 @@ service.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config
+    // If error has no response, it might be network error.
     const msg = error.response?.data?.message || error.message || '请求失败'
 
     // Handle 401 Token Expired
     if (error.response?.status === 401 && !originalRequest._retry) {
+      // If the failed request was a login or refresh request itself, do not retry.
+      if (
+        originalRequest.url?.includes('/auth/login') ||
+        originalRequest.url?.includes('/auth/refresh')
+      ) {
+        return Promise.reject(error)
+      }
+
       if (isRefreshing) {
+        // Concurrency Lock: Queue other requests while refreshing
         return new Promise((resolve) => {
           requests.push((token) => {
             originalRequest.headers['Authorization'] = `Bearer ${token}`
@@ -55,43 +65,59 @@ service.interceptors.response.use(
       isRefreshing = true
 
       try {
-        // Dynamically import to avoid circular dependency
+        // Dynamic import to avoid circular dependency (request <-> auth)
         const { refreshToken } = await import('@/api/auth')
-        const token = localStorage.getItem('refresh_token')
+        const oldRefreshToken = localStorage.getItem('refresh_token')
 
-        if (!token) {
-          throw new Error('No refresh token')
+        if (!oldRefreshToken) {
+          throw new Error('No refresh token available')
         }
 
-        const res = await refreshToken(token)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const newToken = (res as any).access_token
+        // Call Refresh API
+        const res = await refreshToken(oldRefreshToken)
 
-        if (newToken) {
-          localStorage.setItem('access_token', newToken)
-          service.defaults.headers.common['Authorization'] = `Bearer ${newToken}`
+        // Spec: Backend returns new access_token AND new refresh_token (Rotation)
+        const { access_token, refresh_token } = res.data
+
+        if (access_token) {
+          // Update Local Storage with BOTH tokens
+          localStorage.setItem('access_token', access_token)
+          if (refresh_token) {
+            localStorage.setItem('refresh_token', refresh_token)
+          }
+
+          // Update default header
+          service.defaults.headers.common['Authorization'] = `Bearer ${access_token}`
+          originalRequest.headers['Authorization'] = `Bearer ${access_token}`
 
           // Process Queue
-          requests.forEach((cb) => cb(newToken))
+          requests.forEach((cb) => cb(access_token))
           requests = []
 
+          // Retry Original Request
           return service(originalRequest)
         }
       } catch (refreshErr) {
         console.error('RefreshToken Failed:', refreshErr)
+        // Clear tokens
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
-        router.push({ name: 'Login', query: { redirect: router.currentRoute.value.fullPath } })
+
+        // Redirect to Login
+        // Ensure we don't loop if we are already on login?
+        if (router.currentRoute.value.name !== 'Login') {
+          router.push({ name: 'Login', query: { redirect: router.currentRoute.value.fullPath } })
+        }
         return Promise.reject(refreshErr)
       } finally {
         isRefreshing = false
       }
     } else if (error.response?.status === 403) {
-      $alert.warning('权限不足', 3000)
+      $alert.warning('权限不足')
     } else {
-      // Default error handling for other status codes
-      // Always show error message for status >= 400 (except 403 handled above)
+      // Default error handling
       if (error.response?.status && error.response.status >= 400) {
+        // Use global alert
         $alert.error(msg)
       }
     }
