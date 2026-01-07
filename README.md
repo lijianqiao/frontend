@@ -1,48 +1,56 @@
-# frontend
+# Admin RBAC Frontend
 
-This template should help get you started developing with Vue 3 in Vite.
+基于 Vue 3 + Naive UI + Vite + Pinia + TypeScript 构建的后台管理系统前端。
 
-## Recommended IDE Setup
+## 主要特性
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+- **RBAC 权限控制**：基于角色/菜单/按钮的细粒度权限管理
+- **动态路由**：根据后端返回的菜单结构动态生成前端路由
+- **系统管理**：用户、角色、菜单、日志管理
+- **现代化架构**：TypeScript 类型安全，Vite 极速构建
 
-## Recommended Browser Setup
+## 快速开始
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+### 1. 环境准备
 
-## Type Support for `.vue` Imports in TS
+- Node.js >= 20
+- pnpm
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+### 2. 安装依赖
 
-## Customize configuration
-
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
-
-```sh
+```bash
 pnpm install
 ```
 
-### Compile and Hot-Reload for Development
+### 3. 环境配置
 
-```sh
+复制 `.env.example` 并按需修改（如后端地址、端口等）：
+
+```bash
+cp .env.example .env.development
+```
+
+### 4. 启动开发
+
+```bash
 pnpm dev
 ```
 
-### Type-Check, Compile and Minify for Production
+## 常用命令
 
-```sh
-pnpm build
-```
+| 命令          | 说明                  |
+| ------------- | --------------------- |
+| `pnpm dev`    | 启动本地开发服务      |
+| `pnpm build`  | 打包构建生产环境      |
+| `pnpm lint`   | 代码检查与修复        |
+| `pnpm format` | 代码格式化 (Prettier) |
 
-### Lint with [ESLint](https://eslint.org/)
+## 目录结构
 
-```sh
-pnpm lint
-```
+- `src/api`: 后端接口定义
+- `src/components`: 公共组件 (ProTable, BaseForm 等)
+- `src/layouts`: 布局组件 (Sidebar, Header)
+- `src/views`: 页面视图
+- `src/stores`: Pinia 状态管理
+- `src/router`: 路由配置与守卫
+- `src/utils`: 工具函数 (Request, Auth, Date)
