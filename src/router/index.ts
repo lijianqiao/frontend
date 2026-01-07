@@ -1,7 +1,16 @@
+/**
+ * @Author: li
+ * @Email: lijianqiao2906@live.com
+ * @FileName: index.ts
+ * @DateTime: 2026-01-08
+ * @Docs: 路由配置与守卫，适配 HttpOnly Cookie 认证方案
+ */
+
 import { createRouter, createWebHistory } from 'vue-router'
 import { createDiscreteApi } from 'naive-ui'
-import { $alert } from '@/utils/alert' // Use Global Alert
+import { $alert } from '@/utils/alert'
 import { useUserStore } from '@/stores/user'
+import { getAccessToken } from '@/utils/request'
 
 const { loadingBar } = createDiscreteApi(['loadingBar'])
 
@@ -19,7 +28,7 @@ const router = createRouter({
       name: 'MainLayout',
       component: () => import('@/layouts/MainLayout.vue'),
       children: [
-        // Static routes removed. Dynamic routes will be added here.
+        // 动态路由会在这里添加
       ],
     },
     {
@@ -39,24 +48,28 @@ const router = createRouter({
 
 router.beforeEach(async (to, from, next) => {
   loadingBar.start()
-  let token = localStorage.getItem('access_token')
   const userStore = useUserStore()
 
-  // Startup Token Check: Access Token missing but Refresh Token exists?
-  if (!token && localStorage.getItem('refresh_token')) {
+  // 从内存获取 Token
+  let hasToken = !!getAccessToken()
+
+  // 页面刷新时尝试使用 Refresh Token 恢复登录状态
+  if (!hasToken && to.name !== 'Login') {
     const refreshed = await userStore.initialTokenRefresh()
     if (refreshed) {
-      token = localStorage.getItem('access_token')
+      hasToken = true
     }
   }
 
-  if (to.name !== 'Login' && !token) {
+  // 未登录且不是登录页，跳转登录
+  if (to.name !== 'Login' && !hasToken) {
     $alert.error('请先登录')
     next({ name: 'Login' })
     return
   }
 
-  if (token && !userStore.userInfo) {
+  // 已登录但没有用户信息，获取用户信息
+  if (hasToken && !userStore.userInfo) {
     try {
       await userStore.fetchUserInfo()
     } catch (error) {
@@ -66,19 +79,18 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  // Dynamic Routing Logic
-  if (token && !userStore.isRoutesLoaded) {
+  // 动态路由加载
+  if (hasToken && !userStore.isRoutesLoaded) {
     try {
       const { routes } = await userStore.fetchUserMenus()
 
-      // Add dynamic routes as children of MainLayout
-      // Add dynamic routes as children of MainLayout
+      // 添加动态路由到 MainLayout
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       routes.forEach((route: any) => {
         router.addRoute('MainLayout', route)
       })
 
-      // Also add 404 route at the end
+      // 添加 404 兜底路由
       router.addRoute({
         path: '/:pathMatch(.*)*',
         name: 'NotFound',
@@ -86,50 +98,43 @@ router.beforeEach(async (to, from, next) => {
         meta: { title: '404 Not Found' },
       })
 
-      // Hack to ensure addRoute takes effect
+      // 重新导航以使路由生效
       next({ ...to, replace: true })
       return
     } catch (error) {
-      console.error('Failed to generate dynamic routes', error)
+      console.error('动态路由加载失败', error)
       userStore.logout()
       return
     }
   }
 
-  if (to.name === 'Login' && token) {
+  // 已登录用户访问登录页，跳转到首页
+  if (to.name === 'Login' && hasToken) {
     next({ path: '/dashboard' })
     return
   }
 
-  if (token && to.path === '/') {
+  // 根路径跳转到 dashboard
+  if (hasToken && to.path === '/') {
     next({ path: '/dashboard' })
     return
   }
 
-  if (token && to.meta.permission) {
+  // 权限检查
+  if (hasToken && to.meta.permission) {
     const requiredPerm = to.meta.permission as string
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const isSuperuser = (userStore.userInfo as any)?.is_superuser
 
-    // Check perm
     const hasPerm =
       isSuperuser ||
       userStore.permissions.includes(requiredPerm) ||
       userStore.permissions.includes('*:*:*') ||
-      userStore.hasMenu(to.name as string) // Optional double check
+      userStore.hasMenu(to.name as string)
 
     if (!hasPerm) {
       $alert.warning('无权访问')
-      next({ name: 'Forbidden' }) // Ensure Forbidden route exists or redirect to 404?
-      // Since we don't have a Forbidden page in static routes map above (only 404/500/Login/Main),
-      // we might want to redirect to 404 or add a Forbidden page.
-      // For now, let's just abort or use 404.
-      // But wait, the previous code redirected to 'Forbidden'?
-      // Checking old code... it did next({ name: 'Forbidden' }).
-      // I don't see 'Forbidden' defined in the old static routes!
-      // Maybe it was handled by NotFound? Or it was broken?
-      // I will assume NotFound for now or just return false.
-      // Actually, let's keep it consistent. If 'Forbidden' is not defined, router will warn.
+      next({ name: 'Forbidden' })
       loadingBar.error()
       return
     }

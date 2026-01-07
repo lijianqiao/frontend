@@ -47,13 +47,13 @@ const handleLogin = async (e: Event) => {
       loading.value = true
       try {
         const res = await login(model.value)
-        // Fix: Direct access to properties based on actual API response
+        // 新方案：后端只返回 access_token，refresh_token 通过 HttpOnly Cookie 设置
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const data = res as any
-        const token = data.access_token
-        const refreshToken = data.refresh_token
+        const accessToken = data.access_token
 
-        userStore.setToken(token, refreshToken)
+        // 只存储 access_token 到内存
+        userStore.setToken(accessToken)
 
         $alert.success('登录成功')
         router.push('/')

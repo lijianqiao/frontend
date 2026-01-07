@@ -1,31 +1,49 @@
+/**
+ * @Author: li
+ * @Email: lijianqiao2906@live.com
+ * @FileName: user.ts
+ * @DateTime: 2026-01-08
+ * @Docs: 用户状态管理 Store，支持 HttpOnly Cookie 认证方案
+ */
+
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { getUserInfo, logout as logoutApi } from '@/api/auth'
 import { getMyMenus, type Menu } from '@/api/menus'
 import type { User } from '@/api/users'
 import { generateRoutes } from '@/router/utils'
+import { getAccessToken, setAccessToken, clearAccessToken } from '@/utils/request'
+import { getCsrfToken } from '@/utils/cookie'
+import axios from 'axios'
 
 export const useUserStore = defineStore('user', () => {
-  const token = ref<string | null>(localStorage.getItem('access_token'))
+  // Token 现在存储在 request.ts 的内存变量中
+  // 这里只保留一个响应式引用用于UI判断
+  const isLoggedIn = ref(!!getAccessToken())
   const userInfo = ref<User | null>(null)
   const permissions = ref<string[]>([])
   const userMenus = ref<Menu[]>([])
   const isRoutesLoaded = ref(false)
 
-  function setToken(accessToken: string, refreshToken: string) {
-    token.value = accessToken
-    localStorage.setItem('access_token', accessToken)
-    localStorage.setItem('refresh_token', refreshToken)
+  /**
+   * 登录成功后设置 Token
+   * Access Token 存入内存，Refresh Token 由浏览器自动从 Set-Cookie 保存
+   */
+  function setToken(accessToken: string) {
+    setAccessToken(accessToken)
+    isLoggedIn.value = true
   }
 
-  function clearToken() {
-    token.value = null
+  /**
+   * 清除所有认证状态
+   */
+  function clearAuth() {
+    clearAccessToken()
+    isLoggedIn.value = false
     userInfo.value = null
     permissions.value = []
     userMenus.value = []
     isRoutesLoaded.value = false
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
   }
 
   function setUserInfo(info: User) {
@@ -36,26 +54,37 @@ export const useUserStore = defineStore('user', () => {
     permissions.value = perms
   }
 
-  // Attempt to refresh token using existing refresh_token
+  /**
+   * 尝试使用 Refresh Token 刷新 Access Token
+   * 用于页面刷新后恢复登录状态
+   */
   async function initialTokenRefresh(): Promise<boolean> {
-    const refreshTokenStr = localStorage.getItem('refresh_token')
-    if (!refreshTokenStr) return false
+    // 检查 CSRF Token 是否存在（表示可能有有效的 Refresh Token Cookie）
+    const csrfToken = getCsrfToken()
+    if (!csrfToken) {
+      return false
+    }
 
     try {
-      // Dynamic import to avoid circular dependency if needed, but here we can import API directly
-      // However, auth.ts imports request.ts which imports router... circular risk is high.
-      // Use dynamic import for safety.
-      const { refreshToken } = await import('@/api/auth')
-      const res = await refreshToken(refreshTokenStr)
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_BASE_URL || '/api/v1'}/auth/refresh`,
+        {},
+        {
+          withCredentials: true,
+          headers: {
+            'X-CSRF-Token': csrfToken,
+          },
+        },
+      )
 
-      const { access_token, refresh_token } = res.data
-      if (access_token) {
-        setToken(access_token, refresh_token || refreshTokenStr)
+      const accessToken = response.data?.access_token
+      if (accessToken) {
+        setToken(accessToken)
         return true
       }
       return false
     } catch {
-      clearToken()
+      clearAuth()
       return false
     }
   }
@@ -70,7 +99,7 @@ export const useUserStore = defineStore('user', () => {
       }
       return res.data
     } catch (error) {
-      clearToken()
+      clearAuth()
       throw error
     }
   }
@@ -81,7 +110,7 @@ export const useUserStore = defineStore('user', () => {
       if (res.data) {
         userMenus.value = res.data
 
-        // Extract permissions from menus
+        // 从菜单中提取权限标识
         const perms: string[] = []
         const extractPermissions = (menus: Menu[]) => {
           menus.forEach((menu) => {
@@ -95,30 +124,33 @@ export const useUserStore = defineStore('user', () => {
         }
         extractPermissions(res.data)
 
-        // Merge with existing permissions (from userInfo if any, though likely empty)
-        // Use Set to ensure uniqueness
+        // 合并权限，去重
         const uniquePerms = Array.from(new Set([...permissions.value, ...perms]))
         permissions.value = uniquePerms
       }
 
-      // Generate Routes
+      // 生成动态路由
       const routes = generateRoutes(res.data || [])
       isRoutesLoaded.value = true
 
       return { menus: res.data, routes }
     } catch (error) {
-      console.error('Failed to fetch user menus', error)
+      console.error('获取用户菜单失败', error)
       return { menus: [], routes: [] }
     }
   }
 
+  /**
+   * 退出登录
+   * 调用后端 logout 接口，后端会清理 Cookie
+   */
   async function logout() {
     try {
       await logoutApi()
     } catch (error) {
-      console.error('Logout failed:', error)
+      console.error('退出登录失败:', error)
     } finally {
-      clearToken()
+      clearAuth()
       window.location.href = '/login'
     }
   }
@@ -136,13 +168,23 @@ export const useUserStore = defineStore('user', () => {
     return checkMenu(userMenus.value)
   }
 
+  /**
+   * 检查是否有有效的认证状态
+   */
+  function hasValidAuth(): boolean {
+    return !!getAccessToken()
+  }
+
   return {
-    token,
+    // 状态
+    isLoggedIn,
     userInfo,
     permissions,
     userMenus,
+    isRoutesLoaded,
+    // 方法
     setToken,
-    clearToken,
+    clearAuth,
     setUserInfo,
     setPermissions,
     initialTokenRefresh,
@@ -150,6 +192,9 @@ export const useUserStore = defineStore('user', () => {
     fetchUserMenus,
     logout,
     hasMenu,
-    isRoutesLoaded,
+    hasValidAuth,
+    // 兼容旧代码的别名
+    clearToken: clearAuth,
+    token: isLoggedIn, // 兼容性
   }
 })
