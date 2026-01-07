@@ -50,6 +50,35 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
+    build: {
+      // Naive UI 完整包约 1MB，这是组件库的正常体积
+      chunkSizeWarningLimit: 1200,
+      rollupOptions: {
+        output: {
+          // 手动分块，优化打包体积
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              // Vue 生态
+              if (id.includes('vue') || id.includes('pinia') || id.includes('vue-router')) {
+                return 'vue-vendor'
+              }
+              // Naive UI 组件库
+              if (id.includes('naive-ui')) {
+                return 'naive-ui'
+              }
+              // 工具库
+              if (id.includes('axios') || id.includes('dayjs')) {
+                return 'utils-vendor'
+              }
+              // 图标库
+              if (id.includes('@vicons')) {
+                return 'icons-vendor'
+              }
+            }
+          },
+        },
+      },
+    },
     esbuild: {
       drop: env.VITE_DROP_CONSOLE === 'true' ? ['console', 'debugger'] : [],
     },
