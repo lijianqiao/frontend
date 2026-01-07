@@ -309,7 +309,14 @@ const handleExport = () => {
 // Expose methods to parent
 defineExpose({
   reload: handleSearch,
+  refresh: handleSearch,
   reset: handleResetClick,
+  getSelectedRows: () =>
+    data.value.filter((row) => {
+      const key = props.rowKey ? props.rowKey(row) : row.id
+      return checkedRowKeys.value.includes(key)
+    }),
+  getSelectedKeys: () => checkedRowKeys.value,
 })
 </script>
 
@@ -414,6 +421,7 @@ defineExpose({
         :pagination="pagination"
         :row-key="rowKey"
         :row-props="rowProps"
+        v-model:checked-row-keys="checkedRowKeys"
         @update:checked-row-keys="handleCheck"
         @update:filters="handleFiltersChange"
         :scroll-x="scrollX"
