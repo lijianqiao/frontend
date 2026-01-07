@@ -15,6 +15,10 @@ const router = useRouter()
 // const message = useMessage()
 const userStore = useUserStore()
 
+const siteTitle = import.meta.env.VITE_SITE_TITLE || 'Admin RBAC'
+const siteCopyright =
+  import.meta.env.VITE_SITE_COPYRIGHT || '© 2025 Admin RBAC. All Rights Reserved.'
+
 const formRef = ref()
 const model = ref({
   username: '',
@@ -49,8 +53,7 @@ const handleLogin = async (e: Event) => {
         const token = data.access_token
         const refreshToken = data.refresh_token
 
-        userStore.setToken(token)
-        localStorage.setItem('refresh_token', refreshToken)
+        userStore.setToken(token, refreshToken)
 
         $alert.success('登录成功')
         router.push('/')
@@ -68,7 +71,7 @@ const handleLogin = async (e: Event) => {
   <div class="login-container">
     <div class="login-box">
       <div class="header">
-        <h2 class="title">Admin RBAC</h2>
+        <h2 class="title">{{ siteTitle }}</h2>
         <p class="subtitle">欢迎回来，请登录您的账户</p>
       </div>
 
@@ -105,7 +108,7 @@ const handleLogin = async (e: Event) => {
         </n-button>
       </n-form>
     </div>
-    <div class="footer-copyright">&copy; 2025 Admin RBAC. All Rights Reserved.</div>
+    <div class="footer-copyright">{{ siteCopyright }}</div>
   </div>
 </template>
 

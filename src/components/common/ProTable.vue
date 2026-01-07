@@ -131,6 +131,12 @@ watch(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const filters = ref<Record<string, any>>({})
 
+// Helper for deep comparison
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const isDeepEqual = (obj1: any, obj2: any) => {
+  return JSON.stringify(obj1) === JSON.stringify(obj2)
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const handleFiltersChange = (newFilters: Record<string, any>, sourceColumn: any) => {
   // 1. Update Controlled Columns State (UI)
@@ -148,41 +154,22 @@ const handleFiltersChange = (newFilters: Record<string, any>, sourceColumn: any)
   // 2. Format Filters for API
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const formattedFilters: Record<string, any> = {}
-  Object.keys(newFilters).forEach((key) => {
-    const val = newFilters[key]
-    if (Array.isArray(val)) {
-      if (sourceColumn.key === key && !sourceColumn.filterMultiple) {
-        // Special case: Naive UI passes array even for single filter in newFilters map sometimes?
-        // Actually newFilters[key] matches the filterOptionValue(s) structure?
-        // Documentation says: filters is a dictionary.
-        // If multiple, val is array. If single, val is value (or array? standard NDataTable usually uses array for filter state internally but let's check).
-        // Wait, the user example: `addressColumn.filterOptionValue = filters[sourceColumn.key] as string`
-        // So `filters[key]` is indeed the value (string or array).
-        if (val.length > 0) formattedFilters[key] = val[0]
-      } else {
-        if (val.length > 0) formattedFilters[key] = val
-      }
-    } else if (val !== null && val !== undefined) {
-      formattedFilters[key] = val
-    }
-  })
 
-  // Correction: ProTable usually needs flat params for backend if it's single select.
-  // My previous logic:
-  // if (Array.isArray(val)) { if (val.length > 0) formattedFilters[key] = val[0] }
-  // This was assuming EVERYTHING comes as array.
-  // Standardize:
   Object.keys(newFilters).forEach((key) => {
     const val = newFilters[key]
     const col = controlledColumns.value.find((c) => c.key === key)
     if (col && !col.filterMultiple && Array.isArray(val)) {
-      // If single select but got array (Naive UI default behavior for filters is often array unless controlled properly?), take first.
-      // Actually in controlled mode, newFilters[key] IS the value we return.
+      // If single select but got array (Naive UI default), take first.
       formattedFilters[key] = val && val.length ? val[0] : null
     } else {
       formattedFilters[key] = val
     }
   })
+
+  // Prevent redundant search if filters haven't changed
+  if (isDeepEqual(filters.value, formattedFilters)) {
+    return
+  }
 
   // Filters state update
   filters.value = formattedFilters
@@ -318,10 +305,6 @@ const handleExport = () => {
 defineExpose({
   reload: handleSearch,
   reset: handleResetClick,
-})
-
-onMounted(() => {
-  handleSearch()
 })
 </script>
 

@@ -48,16 +48,17 @@ defineOptions({
 
 const userStore = useUserStore()
 const route = useRoute()
+const siteTitle = import.meta.env.VITE_SITE_TITLE || 'Admin RBAC'
 
-// Icon map for dynamic resolution
+// 动态分辨率的图标图
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const iconsMap = Ionicons as Record<string, any>
 
 function renderIcon(iconName: string | null) {
   if (!iconName) return undefined
-  // Try to find exact match
+  // 尝试找到完全匹配
   let icon = iconsMap[iconName]
-  // Fallback: try appending 'Outline' if not found (common pattern)
+  // 后备：如果找不到，请尝试附加“大纲”（常见模式）
   if (!icon && !iconName.endsWith('Outline')) {
     icon = iconsMap[`${iconName}Outline`]
   }
@@ -65,14 +66,14 @@ function renderIcon(iconName: string | null) {
   return () => h(NIcon, null, { default: () => h(icon) })
 }
 
-// Transform backend menu data to Naive UI MenuOption
+// 将后端菜单数据转换为 Naive UI MenuOption
 function transformMenuToOption(menu: Menu): MenuOption {
-  // If type is not explicitly returned, infer from children presence.
+  // 如果未显式返回类型，则根据子项的存在进行推断。
   const hasChildren = menu.children && menu.children.length > 0
   const normalizedType = menu.type ? menu.type.toUpperCase() : 'MENU'
 
-  // It is a leaf (link) if it has NO children AND it is NOT a catalog.
-  // If it has children, it is a Submenu (group) and should not be a link.
+  //如果没有子节点且不是目录，则为叶子（链接）。
+  //如果它有子菜单，那么它是一个子菜单（组）并且不应该是一个链接。
   const isLeaf = !hasChildren && normalizedType !== 'CATALOG'
   const routeName = menu.name
 
@@ -89,7 +90,7 @@ function transformMenuToOption(menu: Menu): MenuOption {
 
   const option: MenuOption = {
     label: label,
-    key: isLeaf ? routeName : menu.id, // Use route name as key for active state mapping if leaf, else ID
+    key: isLeaf ? routeName : menu.id, // 如果是叶，则使用路由名称作为活动状态映射的键，否则使用 ID
     icon: renderIcon(menu.icon),
   }
 
@@ -100,7 +101,7 @@ function transformMenuToOption(menu: Menu): MenuOption {
   return option
 }
 
-// Computed Menu Options
+// 计算菜单选项
 const menuOptions = computed(() => {
   return userStore.userMenus.map(transformMenuToOption)
 })
@@ -149,7 +150,7 @@ const breadcrumbs = computed(() => {
   return route.matched.filter((r) => r.meta && r.meta.title).map((r) => r.meta.title as string)
 })
 
-// === User Profile Logic ===
+// === 用户配置文件逻辑 ===
 const showProfileModal = ref(false)
 const profileLoading = ref(false)
 const displayUsername = computed(() => {
@@ -181,7 +182,7 @@ const handleUpdateProfile = async () => {
   try {
     await updateCurrentUser(profileModel.value)
     $alert.success('更新成功')
-    await userStore.fetchUserInfo() // Refresh
+    await userStore.fetchUserInfo() // 刷新
     showProfileModal.value = false
   } catch (error) {
     console.error(error)
@@ -190,7 +191,7 @@ const handleUpdateProfile = async () => {
   }
 }
 
-// === Change Password Logic ===
+// === 更改密码逻辑 ===
 const showPasswordModal = ref(false)
 const passwordLoading = ref(false)
 const passwordModel = ref({
@@ -255,7 +256,7 @@ onMounted(() => {
     >
       <div class="logo">
         <div class="logo-icon">A</div>
-        <span v-if="!collapsed" class="logo-title">Admin RBAC</span>
+        <span v-if="!collapsed" class="logo-title">{{ siteTitle }}</span>
       </div>
       <n-menu
         :collapsed="collapsed"
@@ -298,7 +299,7 @@ onMounted(() => {
       </n-layout-content>
     </n-layout>
 
-    <!-- Profile Modal -->
+    <!-- 轮廓模态 -->
     <n-modal v-model:show="showProfileModal" preset="card" title="个人信息" style="width: 600px">
       <n-tabs type="line" animated>
         <n-tab-pane name="info" tab="基本信息">
@@ -429,7 +430,7 @@ onMounted(() => {
       </n-tabs>
     </n-modal>
 
-    <!-- Change Password Modal -->
+    <!-- 更改密码模式 -->
     <n-modal v-model:show="showPasswordModal" preset="card" title="修改密码" style="width: 500px">
       <n-form :model="passwordModel" label-placement="left" label-width="100">
         <n-form-item label="旧密码" path="old_password" required>
@@ -546,7 +547,7 @@ onMounted(() => {
   font-weight: 500;
 }
 
-/* Transitions */
+/* 过渡 */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.2s ease;

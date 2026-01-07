@@ -141,7 +141,8 @@ router.beforeEach(async (to, from, next) => {
 router.afterEach((to) => {
   loadingBar.finish()
   if (to.meta.title) {
-    document.title = `${to.meta.title as string} - Admin RBAC`
+    const title = import.meta.env.VITE_SITE_TITLE || 'Admin RBAC'
+    document.title = `${to.meta.title as string} - ${title}`
   }
 })
 
