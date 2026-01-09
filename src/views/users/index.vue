@@ -11,6 +11,7 @@ import {
   type DataTableColumns,
   NTag,
   NSelect,
+  NTreeSelect,
   type DropdownOption,
 } from 'naive-ui'
 import { $alert } from '@/utils/alert'
@@ -29,6 +30,7 @@ import {
   type UserSearchParams,
 } from '@/api/users'
 import { getRoles } from '@/api/roles'
+import { getDeptTree, type Dept } from '@/api/depts'
 import { formatDateTime } from '@/utils/date'
 import ProTable, { type FilterConfig } from '@/components/common/ProTable.vue'
 
@@ -40,6 +42,29 @@ const dialog = useDialog()
 // ProTable 引用
 const tableRef = ref()
 const recycleBinTableRef = ref()
+
+interface TreeSelectOption {
+  label: string
+  key: string
+  children?: TreeSelectOption[]
+}
+const deptTreeOptions = ref<TreeSelectOption[]>([])
+
+const fetchDeptTree = async () => {
+  try {
+    const res = await getDeptTree()
+    const transform = (items: Dept[]): TreeSelectOption[] => {
+      return items.map((item) => ({
+        label: item.name,
+        key: item.id,
+        children: item.children && item.children.length ? transform(item.children) : undefined,
+      }))
+    }
+    deptTreeOptions.value = transform(res.data || [])
+  } catch {
+    // Error handled
+  }
+}
 
 const handleStatusChange = async (row: User, value: boolean) => {
   const originalValue = row.is_active
@@ -58,6 +83,13 @@ const columns: DataTableColumns<User> = [
   { type: 'selection', fixed: 'left' },
   // ID column removed as requested "except id"
   { title: '用户名', key: 'username', width: 120, fixed: 'left', sorter: 'default' },
+  {
+    title: '所属部门',
+    key: 'dept_name',
+    width: 150,
+    ellipsis: { tooltip: true },
+    render: (row) => row.dept_name || '-',
+  },
   { title: '昵称', key: 'nickname', width: 120, ellipsis: { tooltip: true } },
   { title: '邮箱', key: 'email', width: 200, ellipsis: { tooltip: true } },
   { title: '手机号', key: 'phone', width: 150 },
@@ -166,7 +198,9 @@ const handleEdit = (row: User) => {
     gender: row.gender || '保密',
     is_active: row.is_active,
     is_superuser: row.is_superuser,
+    dept_id: row.dept_id || null,
   }
+  fetchDeptTree()
   showCreateModal.value = true
 }
 
@@ -185,6 +219,7 @@ const createModel = ref({
   gender: '保密',
   is_active: true,
   is_superuser: false,
+  dept_id: null as string | null,
 })
 const createRules = computed(() => {
   const rules = {
@@ -213,7 +248,9 @@ const handleCreate = () => {
     gender: '保密',
     is_active: true,
     is_superuser: false,
+    dept_id: null,
   }
+  fetchDeptTree()
   showCreateModal.value = true
 }
 
@@ -546,6 +583,16 @@ const submitAssignRoles = async () => {
               { label: '女', value: '女' },
               { label: '保密', value: '保密' },
             ]"
+          />
+        </n-form-item>
+        <n-form-item label="所属部门" path="dept_id">
+          <n-tree-select
+            v-model:value="createModel.dept_id"
+            :options="deptTreeOptions"
+            placeholder="请选择部门"
+            clearable
+            key-field="key"
+            label-field="label"
           />
         </n-form-item>
         <n-form-item label="状态" path="is_active">

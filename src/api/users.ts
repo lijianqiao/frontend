@@ -10,6 +10,8 @@ export interface User {
   gender: string | null
   is_active: boolean
   is_superuser: boolean
+  dept_id: string | null
+  dept_name: string | null
   created_at: string
   updated_at: string | null
   permissions?: string[]
@@ -25,6 +27,7 @@ export interface UserCreate {
   gender?: string
   is_active?: boolean
   is_superuser?: boolean
+  dept_id?: string | null
 }
 
 export type UserUpdate = Partial<UserCreate>

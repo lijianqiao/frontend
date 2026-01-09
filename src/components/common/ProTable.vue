@@ -51,8 +51,11 @@ const props = withDefaults(
     showRecycleBin?: boolean
     showBatchDelete?: boolean
     // 虚拟滚动配置（适用于大数据量场景）
+    // 虚拟滚动配置（适用于大数据量场景）
     virtualScroll?: boolean
     maxHeight?: number
+    // 是否禁用分页（用于树形表格）
+    disablePagination?: boolean
   }>(),
   {
     scrollX: 1000,
@@ -63,6 +66,7 @@ const props = withDefaults(
     contextMenuOptions: () => [],
     showAdd: false,
     showRecycleBin: false,
+    disablePagination: false,
     showBatchDelete: false,
     virtualScroll: false,
     maxHeight: 600,
@@ -418,7 +422,7 @@ defineExpose({
         :loading="loading || tableLoading"
         :columns="controlledColumns"
         :data="data"
-        :pagination="pagination"
+        :pagination="disablePagination ? false : pagination"
         :row-key="rowKey"
         :row-props="rowProps"
         v-model:checked-row-keys="checkedRowKeys"
