@@ -46,6 +46,44 @@ const router = createRouter({
   ],
 })
 
+let routesLoadingPromise: Promise<void> | null = null
+
+async function ensureRoutesLoaded(userStore: ReturnType<typeof useUserStore>) {
+  if (userStore.isRoutesLoaded) return
+  if (!routesLoadingPromise) {
+    routesLoadingPromise = (async () => {
+      const { routes } = await userStore.fetchUserMenus()
+      if (!userStore.isRoutesLoaded) {
+        throw new Error('动态路由加载失败')
+      }
+
+      // 添加动态路由到 MainLayout
+      routes.forEach((route) => {
+        if (route.name && router.hasRoute(route.name)) return
+        router.addRoute('MainLayout', route)
+      })
+
+      // 添加 404 兜底路由（先检查是否已存在，避免重复添加）
+      if (!router.hasRoute('NotFound')) {
+        router.addRoute({
+          path: '/:pathMatch(.*)*',
+          name: 'NotFound',
+          component: () => import('@/views/error/404.vue'),
+          meta: { title: '404 Not Found' },
+        })
+      }
+    })()
+      .catch((err) => {
+        routesLoadingPromise = null
+        throw err
+      })
+      .finally(() => {
+        routesLoadingPromise = null
+      })
+  }
+  await routesLoadingPromise
+}
+
 router.beforeEach(async (to, from, next) => {
   loadingBar.start()
   const userStore = useUserStore()
@@ -75,6 +113,7 @@ router.beforeEach(async (to, from, next) => {
     } catch (error) {
       console.error(error)
       userStore.logout()
+      next({ name: 'Login' })
       return
     }
   }
@@ -82,22 +121,7 @@ router.beforeEach(async (to, from, next) => {
   // 动态路由加载
   if (hasToken && !userStore.isRoutesLoaded) {
     try {
-      const { routes } = await userStore.fetchUserMenus()
-
-      // 添加动态路由到 MainLayout
-      routes.forEach((route) => {
-        router.addRoute('MainLayout', route)
-      })
-
-      // 添加 404 兜底路由（先检查是否已存在，避免重复添加）
-      if (!router.hasRoute('NotFound')) {
-        router.addRoute({
-          path: '/:pathMatch(.*)*',
-          name: 'NotFound',
-          component: () => import('@/views/error/404.vue'),
-          meta: { title: '404 Not Found' },
-        })
-      }
+      await ensureRoutesLoaded(userStore)
 
       // 重新导航以使路由生效
       next({ ...to, replace: true })
@@ -105,6 +129,7 @@ router.beforeEach(async (to, from, next) => {
     } catch {
       // 错误由 request.ts 统一处理
       userStore.logout()
+      next({ name: 'Login' })
       return
     }
   }
@@ -124,13 +149,7 @@ router.beforeEach(async (to, from, next) => {
   // 权限检查
   if (hasToken && to.meta.permission) {
     const requiredPerm = to.meta.permission as string
-    const isSuperuser = userStore.userInfo?.is_superuser
-
-    const hasPerm =
-      isSuperuser ||
-      userStore.permissions.includes(requiredPerm) ||
-      userStore.permissions.includes('*:*:*') ||
-      userStore.hasMenu(to.name as string)
+    const hasPerm = userStore.canAccessRoute(to.name as string | undefined, requiredPerm)
 
     if (!hasPerm) {
       $alert.warning('无权访问')

@@ -12,6 +12,7 @@ import { getUserInfo, logout as logoutApi } from '@/api/auth'
 import { getMyMenus, type Menu } from '@/api/menus'
 import type { User } from '@/api/users'
 import { generateRoutes } from '@/router/utils'
+import router from '@/router'
 import { getAccessToken, setAccessToken, clearAccessToken } from '@/utils/request'
 import { getCsrfToken } from '@/utils/cookie'
 import axios from 'axios'
@@ -44,6 +45,12 @@ export const useUserStore = defineStore('user', () => {
     permissions.value = []
     userMenus.value = []
     isRoutesLoaded.value = false
+    router.getRoutes().forEach((route) => {
+      const name = route.name ? String(route.name) : ''
+      if (!name) return
+      if (['Login', 'MainLayout', 'Forbidden', 'ServerError'].includes(name)) return
+      router.removeRoute(route.name as string)
+    })
   }
 
   function setUserInfo(info: User) {
@@ -168,6 +175,23 @@ export const useUserStore = defineStore('user', () => {
     return checkMenu(userMenus.value)
   }
 
+  function hasAnyPermission(requiredPerms: string[] | undefined): boolean {
+    if (!requiredPerms || requiredPerms.length === 0) return true
+    if (userInfo.value?.is_superuser) return true
+    if (permissions.value.includes('*:*:*')) return true
+    return requiredPerms.some((perm) => permissions.value.includes(perm))
+  }
+
+  function canAccessRoute(routeName: string | undefined, requiredPerm?: string): boolean {
+    if (userInfo.value?.is_superuser) return true
+    if (permissions.value.includes('*:*:*')) return true
+    if (requiredPerm && permissions.value.includes(requiredPerm)) return true
+    if (routeName) {
+      return hasMenu(routeName)
+    }
+    return false
+  }
+
   /**
    * 检查是否有有效的认证状态
    */
@@ -192,6 +216,8 @@ export const useUserStore = defineStore('user', () => {
     fetchUserMenus,
     logout,
     hasMenu,
+    hasAnyPermission,
+    canAccessRoute,
     hasValidAuth,
     // 兼容旧代码的别名
     clearToken: clearAuth,

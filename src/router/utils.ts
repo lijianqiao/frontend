@@ -12,6 +12,13 @@ import type { Menu } from '@/api/menus'
 // Glob 导入所有视图组件，用于动态路由匹配
 const modules = import.meta.glob('@/views/**/*.vue')
 
+function isSafeComponentPath(path: string): boolean {
+  const normalized = path.trim()
+  if (!normalized.startsWith('/')) return false
+  if (normalized.includes('..') || normalized.includes('\\') || normalized.includes('//')) return false
+  return /^\/views\/[A-Za-z0-9/_-]+\.vue$/.test(normalized)
+}
+
 /**
  * 根据后端菜单数据生成 Vue Router 路由配置
  * @param menus 后端返回的菜单列表
@@ -31,12 +38,19 @@ export function generateRoutes(menus: Menu[]): RouteRecordRaw[] {
       // Layout 类型映射到透传组件
       component = () => import('@/layouts/RouterView.vue')
     } else if (menu.component) {
-      const key = `/src${menu.component}`
-      if (modules[key]) {
-        component = modules[key] as () => Promise<RouteComponent>
-      } else {
-        // 组件路径不存在，显示 404
+      const raw = menu.component.trim()
+      if (!isSafeComponentPath(raw)) {
+        console.warn(`[router] 非法组件路径: ${raw}`)
         component = () => import('@/views/error/404.vue')
+      } else {
+        const key = `/src${raw}`
+        if (modules[key]) {
+          component = modules[key] as () => Promise<RouteComponent>
+        } else {
+          // 组件路径不存在，显示 404
+          console.warn(`[router] 组件不存在: ${raw}`)
+          component = () => import('@/views/error/404.vue')
+        }
       }
     } else if (menu.type === 'MENU') {
       // 菜单类型但没有组件路径，显示 404

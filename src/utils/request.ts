@@ -59,27 +59,33 @@ service.interceptors.request.use(
 
 // Token 刷新状态管理
 let isRefreshing = false
-let refreshSubscribers: Array<(token: string) => void> = []
+type RefreshSubscriber = {
+  resolve: (token: string) => void
+  reject: (error: unknown) => void
+}
+
+let refreshSubscribers: RefreshSubscriber[] = []
 
 /**
  * 订阅 Token 刷新完成事件
  */
-function subscribeTokenRefresh(callback: (token: string) => void): void {
-  refreshSubscribers.push(callback)
+function subscribeTokenRefresh(resolve: (token: string) => void, reject: (error: unknown) => void): void {
+  refreshSubscribers.push({ resolve, reject })
 }
 
 /**
  * 通知所有订阅者 Token 刷新完成
  */
 function onTokenRefreshed(newToken: string): void {
-  refreshSubscribers.forEach((callback) => callback(newToken))
+  refreshSubscribers.forEach(({ resolve }) => resolve(newToken))
   refreshSubscribers = []
 }
 
 /**
  * 通知所有订阅者 Token 刷新失败
  */
-function onTokenRefreshFailed(): void {
+function onTokenRefreshFailed(error: unknown): void {
+  refreshSubscribers.forEach(({ reject }) => reject(error))
   refreshSubscribers = []
 }
 
@@ -89,6 +95,9 @@ function onTokenRefreshFailed(): void {
  */
 async function doRefreshToken(): Promise<string> {
   const csrfToken = getCsrfToken()
+  if (!csrfToken) {
+    throw new Error('CSRF Token 不存在')
+  }
 
   const response = await axios.post(
     `${import.meta.env.VITE_API_BASE_URL || '/api/v1'}/auth/refresh`,
@@ -96,7 +105,7 @@ async function doRefreshToken(): Promise<string> {
     {
       withCredentials: true,
       headers: {
-        'X-CSRF-Token': csrfToken || '',
+        'X-CSRF-Token': csrfToken,
       },
     },
   )
@@ -165,11 +174,16 @@ service.interceptors.response.use(
 
       // 并发控制：如果正在刷新，则排队等待
       if (isRefreshing) {
-        return new Promise((resolve) => {
-          subscribeTokenRefresh((newToken: string) => {
-            originalRequest.headers['Authorization'] = `Bearer ${newToken}`
-            resolve(service(originalRequest))
-          })
+        return new Promise((resolve, reject) => {
+          subscribeTokenRefresh(
+            (newToken: string) => {
+              originalRequest.headers['Authorization'] = `Bearer ${newToken}`
+              resolve(service(originalRequest))
+            },
+            (refreshErr) => {
+              reject(refreshErr)
+            },
+          )
           // 刷新失败时由 handleAuthFailure 统一处理跳转登录页
         })
       }
@@ -194,7 +208,7 @@ service.interceptors.response.use(
         return service(originalRequest)
       } catch (refreshErr) {
         console.error('Token 刷新失败:', refreshErr)
-        onTokenRefreshFailed()
+        onTokenRefreshFailed(refreshErr)
         handleAuthFailure()
         return Promise.reject(refreshErr)
       } finally {
