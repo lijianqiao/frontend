@@ -84,7 +84,7 @@ async function ensureRoutesLoaded(userStore: ReturnType<typeof useUserStore>) {
   await routesLoadingPromise
 }
 
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to) => {
   loadingBar.start()
   const userStore = useUserStore()
 
@@ -102,8 +102,7 @@ router.beforeEach(async (to, from, next) => {
   // 未登录且不是登录页，跳转登录
   if (to.name !== 'Login' && !hasToken) {
     $alert.error('请先登录')
-    next({ name: 'Login' })
-    return
+    return { name: 'Login' }
   }
 
   // 已登录但没有用户信息，获取用户信息
@@ -113,8 +112,7 @@ router.beforeEach(async (to, from, next) => {
     } catch (error) {
       console.error(error)
       userStore.logout()
-      next({ name: 'Login' })
-      return
+      return { name: 'Login' }
     }
   }
 
@@ -124,26 +122,22 @@ router.beforeEach(async (to, from, next) => {
       await ensureRoutesLoaded(userStore)
 
       // 重新导航以使路由生效
-      next({ ...to, replace: true })
-      return
+      return { ...to, replace: true }
     } catch {
       // 错误由 request.ts 统一处理
       userStore.logout()
-      next({ name: 'Login' })
-      return
+      return { name: 'Login' }
     }
   }
 
   // 已登录用户访问登录页，跳转到首页
   if (to.name === 'Login' && hasToken) {
-    next({ path: '/dashboard' })
-    return
+    return { path: '/dashboard' }
   }
 
   // 根路径跳转到 dashboard
   if (hasToken && to.path === '/') {
-    next({ path: '/dashboard' })
-    return
+    return { path: '/dashboard' }
   }
 
   // 权限检查
@@ -153,13 +147,11 @@ router.beforeEach(async (to, from, next) => {
 
     if (!hasPerm) {
       $alert.warning('无权访问')
-      next({ name: 'Forbidden' })
       loadingBar.error()
-      return
+      return { name: 'Forbidden' }
     }
   }
-
-  next()
+  return true
 })
 
 router.afterEach((to) => {
